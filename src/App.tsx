@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react"
-import { Sun, Thermometer, Droplets, Gauge, Eye, Wind, MapPin, Clock, Satellite, Battery, Signal, Cpu, CheckCircle, AlertCircle } from "lucide-react"
+import { Sun, Thermometer, Droplets, Gauge, Eye, Wind, MapPin, Clock, Satellite, Battery, Signal, Cpu, CheckCircle, AlertCircle, BarChart3, TrendingUp, Download, FileText, RefreshCw, ChevronDown } from "lucide-react"
 import { Card, CardContent } from "./components/ui/card"
 import { Badge } from "./components/ui/badge"
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts'
 
 interface WeatherData {
   temperature: {
@@ -438,14 +439,302 @@ function App() {
     </div>
   )
 
-  const renderAnalyticsTab = () => (
-    <div className="flex items-center justify-center h-64">
-      <div className="text-center">
-        <h3 className="text-xl font-semibold text-gray-900 mb-2">Analytics</h3>
-        <p className="text-gray-600">Analytics dashboard coming soon...</p>
+  const renderAnalyticsTab = () => {
+    // Mock data for charts
+    const temperatureData = [
+      { time: '00:00', value: 18.5 },
+      { time: '03:00', value: 16.2 },
+      { time: '06:00', value: 19.8 },
+      { time: '09:00', value: 23.4 },
+      { time: '12:00', value: 27.6 },
+      { time: '15:00', value: 29.1 },
+      { time: '18:00', value: 26.3 },
+      { time: '21:00', value: 22.8 }
+    ]
+
+    const environmentalData = [
+      { time: '00:00', temperature: 18.5, humidity: 65, pressure: 1013, uv: 0 },
+      { time: '03:00', temperature: 16.2, humidity: 72, pressure: 1014, uv: 0 },
+      { time: '06:00', temperature: 19.8, humidity: 68, pressure: 1015, uv: 1.2 },
+      { time: '09:00', temperature: 23.4, humidity: 58, pressure: 1016, uv: 3.8 },
+      { time: '12:00', temperature: 27.6, humidity: 45, pressure: 1015, uv: 5.3 },
+      { time: '15:00', temperature: 29.1, humidity: 42, pressure: 1014, uv: 4.9 },
+      { time: '18:00', temperature: 26.3, humidity: 48, pressure: 1013, uv: 2.1 },
+      { time: '21:00', temperature: 22.8, humidity: 55, pressure: 1012, uv: 0 }
+    ]
+
+    const flightData = [
+      { time: '10:00', speed: 0, altitude: 0 },
+      { time: '10:05', speed: 3.2, altitude: 45 },
+      { time: '10:10', speed: 5.8, altitude: 120 },
+      { time: '10:15', speed: 4.1, altitude: 142 },
+      { time: '10:20', speed: 3.6, altitude: 142 },
+      { time: '10:25', speed: 2.8, altitude: 98 },
+      { time: '10:30', speed: 0, altitude: 0 }
+    ]
+
+    const gpsTrail: [number, number][] = [
+      [7.2901, 80.6337],
+      [7.2905, 80.6340],
+      [7.2910, 80.6345],
+      [7.2915, 80.6342],
+      [7.2920, 80.6338],
+      [7.2918, 80.6335]
+    ]
+
+    return (
+      <div className="space-y-6">
+        {/* Analytics Header */}
+        <Card className="shadow-lg shadow-gray-200/50">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                <BarChart3 className="w-6 h-6 text-blue-500" />
+                Analytics
+              </h2>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Time Range Selector */}
+        <Card className="shadow-md shadow-gray-200/40">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                📅 Time Range Selector
+              </h3>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <select className="appearance-none bg-white border border-gray-300 rounded-md px-4 py-2 pr-8 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                  <option>Last 1h</option>
+                  <option>Last 6h</option>
+                  <option>Last 24h</option>
+                  <option>Last 7d</option>
+                </select>
+                <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+              </div>
+              <button className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors">
+                <RefreshCw className="w-4 h-4" />
+                Refresh
+              </button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Environmental Trends */}
+        <Card className="shadow-md shadow-gray-200/40">
+          <CardContent className="p-6">
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2 mb-4">
+                <TrendingUp className="w-5 h-5 text-green-500" />
+                Environmental Trends (Charts Section)
+              </h3>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Temperature Chart */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <Thermometer className="w-4 h-4 text-red-500" />
+                  Temperature (°C)
+                </h4>
+                <div className="h-48 flex items-center justify-center bg-white rounded border-2 border-dashed border-gray-300">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={temperatureData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="time" />
+                      <YAxis />
+                      <Tooltip />
+                      <Line type="monotone" dataKey="value" stroke="#ef4444" strokeWidth={2} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Humidity Chart */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <Droplets className="w-4 h-4 text-blue-500" />
+                  Humidity (%)
+                </h4>
+                <div className="h-48 flex items-center justify-center bg-white rounded border-2 border-dashed border-gray-300">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={environmentalData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="time" />
+                      <YAxis />
+                      <Tooltip />
+                      <Area type="monotone" dataKey="humidity" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.3} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Pressure Chart */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <Gauge className="w-4 h-4 text-purple-500" />
+                  Pressure (hPa)
+                </h4>
+                <div className="h-48 flex items-center justify-center bg-white rounded border-2 border-dashed border-gray-300">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={environmentalData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="time" />
+                      <YAxis />
+                      <Tooltip />
+                      <Line type="monotone" dataKey="pressure" stroke="#8b5cf6" strokeWidth={2} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* UV Index Chart */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <Sun className="w-4 h-4 text-yellow-500" />
+                  UV Index
+                </h4>
+                <div className="h-48 flex items-center justify-center bg-white rounded border-2 border-dashed border-gray-300">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={environmentalData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="time" />
+                      <YAxis />
+                      <Tooltip />
+                      <Area type="monotone" dataKey="uv" stroke="#eab308" fill="#eab308" fillOpacity={0.3} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Flight History Visualizations */}
+        <Card className="shadow-md shadow-gray-200/40">
+          <CardContent className="p-6">
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2 mb-4">
+                ✈️ Flight History Visualizations
+              </h3>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* GPS Trail Map Placeholder */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-green-500" />
+                  GPS Trail
+                </h4>
+                <div className="h-64 rounded-lg overflow-hidden bg-gray-200 flex items-center justify-center">
+                  <div className="text-center">
+                    <MapPin className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                    <p className="text-gray-600">Interactive Map</p>
+                    <p className="text-sm text-gray-500">GPS Trail: {gpsTrail.length} points</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Speed over Time */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <Wind className="w-4 h-4 text-cyan-500" />
+                  Speed over Time (m/s)
+                </h4>
+                <div className="h-48 flex items-center justify-center bg-white rounded border-2 border-dashed border-gray-300">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={flightData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="time" />
+                      <YAxis />
+                      <Tooltip />
+                      <Line type="monotone" dataKey="speed" stroke="#06b6d4" strokeWidth={2} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Altitude vs Time */}
+              <div className="bg-gray-50 rounded-lg p-4 lg:col-span-2">
+                <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-green-500" />
+                  Altitude vs Time (m)
+                </h4>
+                <div className="h-48 flex items-center justify-center bg-white rounded border-2 border-dashed border-gray-300">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={flightData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="time" />
+                      <YAxis />
+                      <Tooltip />
+                      <Area type="monotone" dataKey="altitude" stroke="#10b981" fill="#10b981" fillOpacity={0.3} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Insights & Aggregates */}
+        <Card className="shadow-md shadow-gray-200/40">
+          <CardContent className="p-6">
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2 mb-4">
+                🧠 Insights & Aggregates
+              </h3>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-blue-50 rounded-lg p-4">
+                <div className="text-sm text-blue-600 font-medium">Average Temperature</div>
+                <div className="text-2xl font-bold text-blue-900">27.6°C</div>
+              </div>
+              <div className="bg-yellow-50 rounded-lg p-4">
+                <div className="text-sm text-yellow-600 font-medium">Max UV Today</div>
+                <div className="text-2xl font-bold text-yellow-900">5.3</div>
+              </div>
+              <div className="bg-green-50 rounded-lg p-4">
+                <div className="text-sm text-green-600 font-medium">CO₂ Trend</div>
+                <div className="text-lg font-bold text-green-900 flex items-center gap-1">
+                  Steady → Rising
+                  <TrendingUp className="w-4 h-4" />
+                </div>
+              </div>
+              <div className="bg-purple-50 rounded-lg p-4">
+                <div className="text-sm text-purple-600 font-medium">Light Peak Time</div>
+                <div className="text-2xl font-bold text-purple-900">11:50 AM</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Export / Download Options */}
+        <Card className="shadow-md shadow-gray-200/40">
+          <CardContent className="p-6">
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2 mb-4">
+                📁 Export / Download Options
+              </h3>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <button className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors">
+                <Download className="w-4 h-4" />
+                Export CSV
+              </button>
+              <button className="flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors">
+                <FileText className="w-4 h-4" />
+                View Report PDF
+              </button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
-    </div>
-  )
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gray-100 p-4">
