@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react"
-import { Sun, Thermometer, Droplets, Gauge, Eye, Wind, MapPin, Clock, Satellite, Battery, Signal, Cpu, CheckCircle, AlertCircle, BarChart3, TrendingUp, Download, FileText, RefreshCw, ChevronDown,Mountain } from "lucide-react"
+import { Sun, Thermometer, Droplets, Gauge, Wind, MapPin, Satellite, Battery, Cpu, CheckCircle, BarChart3, TrendingUp, Download, FileText, RefreshCw, ChevronDown, Mountain } from "lucide-react"
 import { Card, CardContent } from "./components/ui/card"
-import { Badge } from "./components/ui/badge"
 import UvGauge from "./components/ui/UvGauge"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts'
 
@@ -22,6 +21,7 @@ interface WeatherData {
   }
   airQuality: {
     co2: number
+    gas: number
     quality: number
   }
   light: {
@@ -82,6 +82,7 @@ function App() {
     },
     airQuality: {
       co2: 450,
+      gas: 285,
       quality: 78,
     },
     light: {
@@ -116,13 +117,6 @@ function App() {
         <div className="text-xl">No weather data available</div>
       </div>
     )
-  }
-
-  const getUVColor = (value: number) => {
-    if (value <= 2) return "bg-green-200 text-green-800"
-    if (value <= 5) return "bg-yellow-200 text-yellow-800"
-    if (value <= 7) return "bg-orange-200 text-orange-800"
-    return "bg-red-200 text-red-800"
   }
 
   const renderSystemTab = () => (
@@ -265,19 +259,19 @@ function App() {
   )
 
   const renderLiveTab = () => (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
       {/* Main Weather Display */}
       <div className="lg:col-span-2">
-        <Card className="mb-6 shadow-lg shadow-gray-200/50">
-          <CardContent className="p-6">
+        <Card className="mb-4 shadow-lg shadow-gray-200/50">
+          <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <div className="flex items-center gap-4 mb-2">
-                  <Thermometer className="w-16 h-16 text-blue-500" />
-                <span className="text-4xl text-gray-600">Temperature</span>
+                <div className="flex items-center gap-3 mb-2">
+                  <Thermometer className="w-12 h-12 text-blue-500" />
+                <span className="text-3xl text-gray-600">Temperature</span>
               </div>
-              <div className="text-5xl font-semibold text-gray-900">{weatherData.temperature.celsius}°C</div>
-              <div className="text-lg font-light text-gray-600 mb-1">Feels like {weatherData.temperature.feelsLike}°</div>
+              <div className="text-4xl font-semibold text-gray-900">{weatherData.temperature.celsius}°C</div>
+              <div className="text-base font-light text-gray-600 mb-1">Feels like {weatherData.temperature.feelsLike}°</div>
                   
               </div>
             </div>
@@ -285,51 +279,51 @@ function App() {
         </Card>
 
         {/* Weather Metrics Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
           <Card className="shadow-md shadow-gray-200/40 hover:shadow-lg hover:shadow-gray-200/50 transition-shadow duration-300">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-3 mb-3">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3 mb-2">
                 <Sun className="w-5 h-5 text-yellow-500" />
-                  <span className="text-gray-600 ">Light intensity</span>
+                  <span className="text-gray-600">Light intensity</span>
                 </div>
-                <div className="text-3xl font-semibold text-gray-900">{weatherData.light.lux} lx</div>
-                <div className="text-4xl text-gray-600 ">{weatherData.condition}</div>
+                <div className="text-2xl font-semibold text-gray-900">{weatherData.light.lux} lx</div>
+                <div className="text-sm text-gray-600">{weatherData.condition}</div>
             </CardContent>
           </Card>
 
           <Card className="shadow-md shadow-gray-200/40 hover:shadow-lg hover:shadow-gray-200/50 transition-shadow duration-300">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-3 mb-3">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3 mb-2">
                 <Droplets className="w-5 h-5 text-blue-500" />
                 <span className="text-gray-600">Humidity</span>
               </div>
-              <div className="text-3xl font-semibold text-gray-900">{weatherData.humidity}%</div>
+              <div className="text-2xl font-semibold text-gray-900">{weatherData.humidity}%</div>
             </CardContent>
           </Card>
 
           <Card className="shadow-md shadow-gray-200/40 hover:shadow-lg hover:shadow-gray-200/50 transition-shadow duration-300">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-3 mb-3">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3 mb-2">
                 <Gauge className="w-5 h-5 text-blue-500" />
                 <span className="text-gray-600">Pressure</span>
               </div>
-              <div className="text-lg font-semibold text-gray-900">{weatherData.pressure.altitude}m</div>
-              <div className="text-2xl font-semibold text-gray-900">{weatherData.pressure.hPa} hPa</div>
+              <div className="text-base font-semibold text-gray-900">{weatherData.pressure.altitude}m</div>
+              <div className="text-xl font-semibold text-gray-900">{weatherData.pressure.hPa} hPa</div>
             </CardContent>
           </Card>
         </div>
 
         {/* Additional Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <Card className="shadow-md shadow-gray-200/40 hover:shadow-lg hover:shadow-gray-200/50 transition-shadow duration-300">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-3 mb-3">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3 mb-2">
                 <Sun className="w-5 h-5 text-orange-500" />
                 <span className="text-gray-600">UV Index</span>
               </div>
               <div className="flex flex-col items-center">
                 <UvGauge value={weatherData.uvIndex.value} />
-                <span className="mt-2 text-gray-600 text-sm">
+                <span className="mt-1 text-gray-600 text-xs">
                    {weatherData.uvIndex.level}
                 </span>
               </div>
@@ -337,54 +331,49 @@ function App() {
           </Card>
 
           <Card className="shadow-md shadow-gray-200/40 hover:shadow-lg hover:shadow-gray-200/50 transition-shadow duration-300">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-3 mb-3">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3 mb-2">
                 <Mountain className="w-5 h-5 text-gray-500" />
                 <span className="text-gray-600">Altitude</span>
               </div>
-              <div className="text-3xl font-semibold text-gray-900">{weatherData.location.altitude} m</div>
+              <div className="text-2xl font-semibold text-gray-900">{weatherData.location.altitude} m</div>
             </CardContent>
           </Card>
 
           <Card className="shadow-md shadow-gray-200/40 hover:shadow-lg hover:shadow-gray-200/50 transition-shadow duration-300">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-3 mb-3">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3 mb-2">
                 <Wind className="w-5 h-5 text-gray-500" />
-                <span className="text-gray-600">CO₂ Air Quality</span>
+                <span className="text-gray-600">Air Quality</span>
               </div>
-              <div className="text-lg font-semibold text-gray-900">{weatherData.airQuality.quality}</div>
-              <div className="text-2xl font-semibold text-gray-900">{weatherData.airQuality.co2} ppm</div>
+              <div className="space-y-1">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-gray-600">Gas:</span>
+                  <span className="text-sm font-semibold text-gray-900">{weatherData.airQuality.gas} ppm</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-gray-600">CO₂:</span>
+                  <span className="text-sm font-semibold text-gray-900">{weatherData.airQuality.co2} ppm</span>
+                </div>
+                <div className="text-center mt-1 pt-1 border-t border-gray-200">
+                  <span className="text-xs text-gray-500">Quality: </span>
+                  <span className="text-sm font-semibold text-gray-900">{weatherData.airQuality.quality}</span>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>
       </div>
 
       {/* Right Sidebar */}
-      <div className="space-y-4">
-        {/* <Card className="shadow-md shadow-gray-200/40 hover:shadow-lg hover:shadow-gray-200/50 transition-shadow duration-300">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-gray-600">Humidity</span>
-              <span className="text-2xl font-semibold">{weatherData.humidity}%</span>
-            </div>
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-gray-600">UV Index</span>
-              <Badge className={`${getUVColor(weatherData.uvIndex.value)}`}>{weatherData.uvIndex.value}</Badge>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-gray-600">Altitude</span>
-              <span className="text-xl font-semibold">{weatherData.location.altitude} m</span>
-            </div>
-          </CardContent>
-        </Card> */}
-
+      <div className="space-y-3">
         {/* Map Card */}
         <Card className="shadow-md shadow-gray-200/40 hover:shadow-lg hover:shadow-gray-200/50 transition-shadow duration-300">
-          <CardContent className="p-6">
-            <div className="bg-gray-200 h-64 rounded-lg flex items-center justify-center mb-4 relative overflow-hidden">
+          <CardContent className="p-4">
+            <div className="bg-gray-200 h-48 rounded-lg flex items-center justify-center mb-2 relative overflow-hidden">
               <div className="absolute inset-0 bg-gradient-to-br from-gray-300 to-gray-400 opacity-50"></div>
-              <MapPin className="w-8 h-8 text-gray-600 z-10" />
-              <div className="absolute bottom-4 left-4 text-sm font-medium text-gray-700">
+              <MapPin className="w-6 h-6 text-gray-600 z-10" />
+              <div className="absolute bottom-2 left-2 text-xs font-medium text-gray-700">
                 {weatherData.location.latitude.toFixed(4)}° N, {Math.abs(weatherData.location.longitude).toFixed(4)}
                 ° W
               </div>
@@ -393,45 +382,44 @@ function App() {
         </Card>
 
         {/* Navigation & Status */}
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-2">
           <Card className="shadow-md shadow-gray-200/40 hover:shadow-lg hover:shadow-gray-200/50 transition-shadow duration-300">
-           <CardContent className="p-4">
+           <CardContent className="p-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-               <div className="w-6 h-6 rounded-full bg-gray-300 flex items-center justify-center">
-                  <div className="w-2 h-2 bg-gray-600 rounded-full"></div>
+               <div className="w-5 h-5 rounded-full bg-gray-300 flex items-center justify-center">
+                  <div className="w-1.5 h-1.5 bg-gray-600 rounded-full"></div>
                 </div>
                <span className="text-sm text-gray-600">Course</span>
               </div>
-             <div className="text-xl font-semibold">{weatherData.wind.direction}°</div>
+             <div className="text-lg font-semibold">{weatherData.wind.direction}°</div>
            </div>
          </CardContent>
           </Card>
 
 
           <Card className="shadow-md shadow-gray-200/40 hover:shadow-lg hover:shadow-gray-200/50 transition-shadow duration-300">
-            <CardContent className="p-4">
+            <CardContent className="p-3">
              <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-full bg-gray-300 flex items-center justify-center">
-               <div className="w-3 h-1 bg-gray-600 rounded"></div>
+              <div className="w-5 h-5 rounded-full bg-gray-300 flex items-center justify-center">
+               <div className="w-2.5 h-0.5 bg-gray-600 rounded"></div>
                </div>
                 <span className="text-sm text-gray-600">Speed</span>
                </div>
-              <div className="text-xl font-semibold">{weatherData.wind.speed} km/h</div>
+              <div className="text-lg font-semibold">{weatherData.wind.speed} km/h</div>
              </div>
             </CardContent>
           </Card>
 
-
           <Card className="shadow-md shadow-gray-200/40 hover:shadow-lg hover:shadow-gray-200/50 transition-shadow duration-300">
-            <CardContent className="p-4">
+            <CardContent className="p-3">
              <div className="flex items-center justify-between">
                <div className="flex items-center gap-2">
-                <Satellite className="w-5 h-5 text-gray-600" />
+                <Satellite className="w-4 h-4 text-gray-600" />
                 <span className="text-sm text-gray-600">Satellites</span>
                   </div>
-               <div className="text-xl font-semibold">{weatherData.satellites}</div>
+               <div className="text-lg font-semibold">{weatherData.satellites}</div>
                </div>
             </CardContent>
             </Card>
@@ -741,13 +729,13 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 p-4">
+    <div className="min-h-screen bg-gray-100 p-2">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <Card className="mb-6 shadow-lg shadow-gray-200/50">
-          <CardContent className="p-6">
+        <Card className="mb-4 shadow-lg shadow-gray-200/50">
+          <CardContent className="p-4">
             <div className="flex items-center justify-between">
-              <h1 className="text-3xl font-bold text-gray-900">SkyForge</h1>
+              <h1 className="text-2xl font-bold text-gray-900">SkyForge</h1>
 
               {/* Navigation Tabs */}
               <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
