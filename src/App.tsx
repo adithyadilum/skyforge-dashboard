@@ -273,11 +273,12 @@ function App() {
             <div className="flex items-center justify-between">
               <div>
                 <div className="flex items-center gap-4 mb-2">
-                  <Sun className="w-16 h-16 text-yellow-500" />
-                  <span className="text-4xl text-gray-600">Light intensity</span>
-                </div>
-                <div className="text-5xl font-semibold text-gray-900">{weatherData.light.lux} lx</div>
-                <div className="text-4xl font-light text-gray-600 mb-1">{weatherData.condition}</div>
+                  <Thermometer className="w-16 h-16 text-blue-500" />
+                <span className="text-4xl text-gray-600">Temperature</span>
+              </div>
+              <div className="text-5xl font-semibold text-gray-900">{weatherData.temperature.celsius}°C</div>
+              <div className="text-lg font-light text-gray-600 mb-1">Feels like {weatherData.temperature.feelsLike}°</div>
+                  
               </div>
             </div>
           </CardContent>
@@ -288,11 +289,11 @@ function App() {
           <Card className="shadow-md shadow-gray-200/40 hover:shadow-lg hover:shadow-gray-200/50 transition-shadow duration-300">
             <CardContent className="p-6">
               <div className="flex items-center gap-3 mb-3">
-                <Thermometer className="w-5 h-5 text-blue-500" />
-                <span className="text-gray-600">Temperature</span>
-              </div>
-              <div className="text-3xl font-semibold text-gray-900">{weatherData.temperature.celsius}°C</div>
-              <div className="text-lg text-gray-600">Feels like {weatherData.temperature.feelsLike}°</div>
+                <Sun className="w-5 h-5 text-yellow-500" />
+                  <span className="text-gray-600 ">Light intensity</span>
+                </div>
+                <div className="text-3xl font-semibold text-gray-900">{weatherData.light.lux} lx</div>
+                <div className="text-4xl text-gray-600 ">{weatherData.condition}</div>
             </CardContent>
           </Card>
 
