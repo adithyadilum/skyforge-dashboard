@@ -40,7 +40,7 @@ function App() {
       altitude: 105,
     },
     uvIndex: {
-      value: 5,
+      value: 10,
       level: "Moderate",
     },
     airQuality: {
