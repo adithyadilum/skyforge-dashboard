@@ -34,4 +34,7 @@ export interface WeatherData {
   satellites: number
   timestamp: string
   condition: string
+  isLive?: boolean
+  lastUpdate?: number
+  recordId?: string
 }

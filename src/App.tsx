@@ -27,6 +27,11 @@ function App() {
     console.log("Initializing dashboard...")
     setConnectionStatus('connecting')
 
+    // Set up connection status monitoring
+    firebaseService.setConnectionStatusCallback((status) => {
+      setConnectionStatus(status)
+    })
+
     // Set a timeout to ensure loading is set to false even if Firebase fails
     const loadingTimeout = setTimeout(() => {
       if (loading) {
@@ -35,7 +40,7 @@ function App() {
         setConnectionStatus('disconnected')
         setLoading(false)
       }
-    }, 3000) // 3 second timeout
+    }, 5000) // 5 second timeout
 
     // Subscribe to real-time Firebase data
     console.log("Connecting to Firebase...")
@@ -44,7 +49,7 @@ function App() {
       if (data) {
         console.log("Received Firebase weather data:", data)
         setWeatherData(data)
-        setConnectionStatus('connected')
+        // Connection status is now handled by the service itself
       } else {
         console.log("No Firebase weather data, using fallback mock data")
         setWeatherData(getMockData())
@@ -153,8 +158,15 @@ function App() {
                       ? 'bg-yellow-500 animate-pulse'
                       : 'bg-red-500'
                     }`}></div>
-                  {connectionStatus === 'connected' ? 'Live Data' : connectionStatus === 'connecting' ? 'Connecting...' : 'Mock Data'}
+                  {connectionStatus === 'connected' ? 'LIVE' : connectionStatus === 'connecting' ? 'Connecting...' : 'OFFLINE'}
                 </div>
+
+                {/* Data Freshness Indicator */}
+                {weatherData?.lastUpdate && (
+                  <div className="text-xs text-gray-500">
+                    Last Update: {new Date(weatherData.lastUpdate).toLocaleTimeString()}
+                  </div>
+                )}
               </div>
 
               {/* Navigation Tabs */}
@@ -211,7 +223,14 @@ function App() {
 
         {/* Tab Content */}
         {activeTab === "Live" && <LiveTab weatherData={weatherData} />}
-        {activeTab === "System" && <SystemTab currentDateTime={currentDateTime} systemData={systemData} />}
+        {activeTab === "System" && (
+          <SystemTab
+            currentDateTime={currentDateTime}
+            systemData={systemData}
+            weatherData={weatherData}
+            connectionStatus={connectionStatus}
+          />
+        )}
         {activeTab === "Analytics" && <AnalyticsTab weatherData={weatherData} />}
       </div>
     </div>
