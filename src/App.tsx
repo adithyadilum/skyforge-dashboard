@@ -139,22 +139,20 @@ function App() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <h1 className="text-2xl font-bold text-gray-900">SkyForge</h1>
-                
+
                 {/* Connection Status Indicator */}
-                <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium ${
-                  connectionStatus === 'connected' 
-                    ? 'bg-green-100 text-green-800' 
-                    : connectionStatus === 'connecting'
+                <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium ${connectionStatus === 'connected'
+                  ? 'bg-green-100 text-green-800'
+                  : connectionStatus === 'connecting'
                     ? 'bg-yellow-100 text-yellow-800'
                     : 'bg-red-100 text-red-800'
-                }`}>
-                  <div className={`w-2 h-2 rounded-full ${
-                    connectionStatus === 'connected' 
-                      ? 'bg-green-500' 
-                      : connectionStatus === 'connecting'
+                  }`}>
+                  <div className={`w-2 h-2 rounded-full ${connectionStatus === 'connected'
+                    ? 'bg-green-500'
+                    : connectionStatus === 'connecting'
                       ? 'bg-yellow-500 animate-pulse'
                       : 'bg-red-500'
-                  }`}></div>
+                    }`}></div>
                   {connectionStatus === 'connected' ? 'Live Data' : connectionStatus === 'connecting' ? 'Connecting...' : 'Mock Data'}
                 </div>
               </div>
