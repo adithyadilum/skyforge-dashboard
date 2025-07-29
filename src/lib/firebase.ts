@@ -1,6 +1,21 @@
 import { initializeApp, getApps } from "firebase/app"
 import { getDatabase } from "firebase/database"
 
+// Check if Firebase is properly configured
+const hasFirebaseConfig = !!(
+  import.meta.env.VITE_FIREBASE_API_KEY &&
+  import.meta.env.VITE_FIREBASE_AUTH_DOMAIN &&
+  import.meta.env.VITE_FIREBASE_DB_URL &&
+  import.meta.env.VITE_FIREBASE_PROJECT_ID
+)
+
+console.log('🔥 Firebase Configuration Check:')
+console.log('API Key:', import.meta.env.VITE_FIREBASE_API_KEY ? '✅ Set' : '❌ Missing')
+console.log('Auth Domain:', import.meta.env.VITE_FIREBASE_AUTH_DOMAIN ? '✅ Set' : '❌ Missing')
+console.log('Database URL:', import.meta.env.VITE_FIREBASE_DB_URL ? '✅ Set' : '❌ Missing')
+console.log('Project ID:', import.meta.env.VITE_FIREBASE_PROJECT_ID ? '✅ Set' : '❌ Missing')
+console.log('Has Firebase Config:', hasFirebaseConfig)
+
 // ⛔ Replace the placeholders with **your real Firebase project values**
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -12,7 +27,19 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 }
 
-// Avoid re-initialising during hot-reload in Vite
-const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig)
+let db: any = null
 
-export const db = getDatabase(app)
+try {
+  if (hasFirebaseConfig) {
+    // Avoid re-initialising during hot-reload in Vite
+    const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig)
+    db = getDatabase(app)
+    console.log("Firebase initialized successfully")
+  } else {
+    console.warn("Firebase configuration incomplete - using mock data mode")
+  }
+} catch (error) {
+  console.error("Firebase initialization failed:", error)
+}
+
+export { db, hasFirebaseConfig }

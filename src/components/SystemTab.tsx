@@ -3,9 +3,10 @@ import { Card, CardContent } from "./ui/card"
 
 interface SystemTabProps {
   currentDateTime: Date
+  systemData?: any
 }
 
-export default function SystemTab({ currentDateTime }: SystemTabProps) {
+export default function SystemTab({ currentDateTime, systemData }: SystemTabProps) {
   return (
     <div className="space-y-6">
       {/* System Header */}
@@ -85,7 +86,9 @@ export default function SystemTab({ currentDateTime }: SystemTabProps) {
             {/* Battery Voltage */}
             <div className="bg-gray-50 rounded-lg p-4 text-center">
               <div className="text-sm text-gray-600 mb-1">Battery Voltage</div>
-              <div className="text-lg font-bold text-gray-900">11.7 V</div>
+              <div className="text-lg font-bold text-gray-900">
+                {systemData?.batteryVoltage?.toFixed(1) || '11.7'} V
+              </div>
             </div>
             
             {/* NRF Link */}
@@ -116,7 +119,9 @@ export default function SystemTab({ currentDateTime }: SystemTabProps) {
             {/* Uptime */}
             <div className="bg-gray-50 rounded-lg p-4 text-center">
               <div className="text-sm text-gray-600 mb-1">Uptime</div>
-              <div className="text-lg font-bold text-gray-900">00:13:22</div>
+              <div className="text-lg font-bold text-gray-900">
+                {systemData?.uptime || '00:13:22'}
+              </div>
             </div>
           </div>
         </CardContent>
@@ -170,7 +175,9 @@ export default function SystemTab({ currentDateTime }: SystemTabProps) {
             </div>
             <div className="flex justify-between items-center py-2 border-b border-gray-200">
               <span className="text-gray-600">ESP32 Temp:</span>
-              <span className="font-semibold text-gray-900">39.2°C</span>
+              <span className="font-semibold text-gray-900">
+                {systemData?.esp32Temp?.toFixed(1) || '39.2'}°C
+              </span>
             </div>
           </div>
         </CardContent>

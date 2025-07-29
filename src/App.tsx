@@ -4,12 +4,15 @@ import LiveTab from "./components/LiveTab"
 import SystemTab from "./components/SystemTab"
 import AnalyticsTab from "./components/AnalyticsTab"
 import { WeatherData } from "./types"
+import { firebaseService } from "./services/firebaseService"
 
 function App() {
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null)
+  const [systemData, setSystemData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState("Live")
   const [currentDateTime, setCurrentDateTime] = useState(new Date())
+  const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'connecting'>('connecting')
 
   useEffect(() => {
     // Update date/time every second
@@ -21,11 +24,49 @@ function App() {
   }, [])
 
   useEffect(() => {
-    // For demo purposes, use mock data directly
-    // To enable Firebase, add your Firebase config to .env file
-    console.log("Using mock data for demo")
-    setWeatherData(getMockData())
-    setLoading(false)
+    console.log("Initializing dashboard...")
+    setConnectionStatus('connecting')
+
+    // Set a timeout to ensure loading is set to false even if Firebase fails
+    const loadingTimeout = setTimeout(() => {
+      if (loading) {
+        console.log("Loading timeout reached, using mock data")
+        setWeatherData(getMockData())
+        setConnectionStatus('disconnected')
+        setLoading(false)
+      }
+    }, 3000) // 3 second timeout
+
+    // Subscribe to real-time Firebase data
+    console.log("Connecting to Firebase...")
+    const weatherUnsubscribe = firebaseService.subscribeToWeatherData((data) => {
+      clearTimeout(loadingTimeout) // Clear timeout since we got a response
+      if (data) {
+        console.log("Received Firebase weather data:", data)
+        setWeatherData(data)
+        setConnectionStatus('connected')
+      } else {
+        console.log("No Firebase weather data, using fallback mock data")
+        setWeatherData(getMockData())
+        setConnectionStatus('disconnected')
+      }
+      setLoading(false)
+    })
+
+    // Subscribe to system data
+    const systemUnsubscribe = firebaseService.subscribeToSystemData((data) => {
+      if (data) {
+        console.log("Received Firebase system data:", data)
+        setSystemData(data)
+      }
+    })
+
+    // Cleanup subscriptions on unmount
+    return () => {
+      clearTimeout(loadingTimeout)
+      weatherUnsubscribe()
+      systemUnsubscribe()
+    }
   }, [])
 
   const getMockData = (): WeatherData => ({
@@ -40,7 +81,7 @@ function App() {
       altitude: 105,
     },
     uvIndex: {
-      value: 5,
+      value: 2,
       level: "Moderate",
     },
     airQuality: {
@@ -69,7 +110,14 @@ function App() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="text-xl">Loading weather data...</div>
+        <div className="text-center">
+          <div className="text-xl mb-2">
+            {connectionStatus === 'connecting' ? 'Connecting to Firebase...' : 'Loading weather data...'}
+          </div>
+          <div className="text-sm text-gray-600">
+            {connectionStatus === 'connecting' && 'Attempting to fetch live sensor data'}
+          </div>
+        </div>
       </div>
     )
   }
@@ -89,7 +137,27 @@ function App() {
         <Card className="mb-4 shadow-lg shadow-gray-200/50">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
-              <h1 className="text-2xl font-bold text-gray-900">SkyForge</h1>
+              <div className="flex items-center gap-4">
+                <h1 className="text-2xl font-bold text-gray-900">SkyForge</h1>
+                
+                {/* Connection Status Indicator */}
+                <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium ${
+                  connectionStatus === 'connected' 
+                    ? 'bg-green-100 text-green-800' 
+                    : connectionStatus === 'connecting'
+                    ? 'bg-yellow-100 text-yellow-800'
+                    : 'bg-red-100 text-red-800'
+                }`}>
+                  <div className={`w-2 h-2 rounded-full ${
+                    connectionStatus === 'connected' 
+                      ? 'bg-green-500' 
+                      : connectionStatus === 'connecting'
+                      ? 'bg-yellow-500 animate-pulse'
+                      : 'bg-red-500'
+                  }`}></div>
+                  {connectionStatus === 'connected' ? 'Live Data' : connectionStatus === 'connecting' ? 'Connecting...' : 'Mock Data'}
+                </div>
+              </div>
 
               {/* Navigation Tabs */}
               <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
@@ -145,8 +213,8 @@ function App() {
 
         {/* Tab Content */}
         {activeTab === "Live" && <LiveTab weatherData={weatherData} />}
-        {activeTab === "System" && <SystemTab currentDateTime={currentDateTime} />}
-        {activeTab === "Analytics" && <AnalyticsTab />}
+        {activeTab === "System" && <SystemTab currentDateTime={currentDateTime} systemData={systemData} />}
+        {activeTab === "Analytics" && <AnalyticsTab weatherData={weatherData} />}
       </div>
     </div>
   )
