@@ -95,7 +95,7 @@ UVChart.displayName = 'UVChart'
 SpeedChart.displayName = 'SpeedChart'
 AltitudeChart.displayName = 'AltitudeChart'
 
-const AnalyticsTab = React.memo(({ }: AnalyticsTabProps) => {
+const AnalyticsTab = React.memo(({ weatherData }: AnalyticsTabProps) => {
   const [historicalData, setHistoricalData] = useState<WeatherData[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [recordLimit, setRecordLimit] = useState(50) // Add record limit state

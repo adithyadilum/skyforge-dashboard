@@ -30,30 +30,19 @@ function App() {
     // Set up connection status monitoring
     firebaseService.setConnectionStatusCallback((status) => {
       setConnectionStatus(status)
+      console.log(`📡 Connection status changed to: ${status}`)
     })
 
-    // Set a timeout to ensure loading is set to false even if Firebase fails
-    const loadingTimeout = setTimeout(() => {
-      if (loading) {
-        console.log("Loading timeout reached, using mock data")
-        setWeatherData(getMockData())
-        setConnectionStatus('disconnected')
-        setLoading(false)
-      }
-    }, 5000) // 5 second timeout
-
-    // Subscribe to real-time Firebase data
+    // Subscribe to real-time Firebase data (no timeout fallback)
     console.log("Connecting to Firebase...")
     const weatherUnsubscribe = firebaseService.subscribeToWeatherData((data) => {
-      clearTimeout(loadingTimeout) // Clear timeout since we got a response
       if (data) {
         console.log("Received Firebase weather data:", data)
         setWeatherData(data)
-        // Connection status is now handled by the service itself
+        // Connection status is handled by the service itself based on data freshness
       } else {
-        console.log("No Firebase weather data, using fallback mock data")
-        setWeatherData(getMockData())
-        setConnectionStatus('disconnected')
+        console.log("No Firebase weather data available")
+        setWeatherData(null) // No mock data fallback
       }
       setLoading(false)
     })
@@ -66,61 +55,28 @@ function App() {
       }
     })
 
+    // Set loading to false after a short delay to show the app
+    const initialLoadTimeout = setTimeout(() => {
+      setLoading(false)
+    }, 2000) // 2 second initial loading
+
     // Cleanup subscriptions on unmount
     return () => {
-      clearTimeout(loadingTimeout)
+      clearTimeout(initialLoadTimeout)
       weatherUnsubscribe()
       systemUnsubscribe()
     }
   }, [])
-
-  const getMockData = (): WeatherData => ({
-    temperature: {
-      celsius: 22,
-      fahrenheit: 72,
-      feelsLike: 70,
-    },
-    humidity: 51,
-    pressure: {
-      hPa: 1015,
-      altitude: 105,
-    },
-    uvIndex: {
-      value: 2,
-      level: "Moderate",
-    },
-    airQuality: {
-      co2: 450,
-      gas: 285,
-      quality: 78,
-    },
-    light: {
-      lux: 550,
-      ppm: 550,
-    },
-    location: {
-      latitude: 40.7128,
-      longitude: -74.006,
-      altitude: 1200,
-    },
-    wind: {
-      speed: 5.2,
-      direction: 238,
-    },
-    satellites: 8,
-    timestamp: "3:27 PM",
-    condition: "Sunny",
-  })
 
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
         <div className="text-center">
           <div className="text-xl mb-2">
-            {connectionStatus === 'connecting' ? 'Connecting to Firebase...' : 'Loading weather data...'}
+            {connectionStatus === 'connecting' ? 'Connecting to Firebase...' : 'Loading sensor data...'}
           </div>
           <div className="text-sm text-gray-600">
-            {connectionStatus === 'connecting' && 'Attempting to fetch live sensor data'}
+            {connectionStatus === 'connecting' && 'Establishing real-time connection'}
           </div>
         </div>
       </div>
@@ -130,7 +86,32 @@ function App() {
   if (!weatherData) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="text-xl">No weather data available</div>
+        <div className="text-center">
+          <div className="text-xl mb-2">No Live Data Available</div>
+          <div className="text-sm text-gray-600">
+            {connectionStatus === 'connecting' 
+              ? 'Establishing connection to Firebase...' 
+              : connectionStatus === 'disconnected'
+              ? 'Database not receiving data. Check your sensors and Firebase connection.'
+              : 'Waiting for sensor data...'}
+          </div>
+          <div className={`mt-4 inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium ${
+            connectionStatus === 'connected'
+              ? 'bg-green-100 text-green-800'
+              : connectionStatus === 'connecting'
+                ? 'bg-yellow-100 text-yellow-800'
+                : 'bg-red-100 text-red-800'
+          }`}>
+            <div className={`w-2 h-2 rounded-full ${
+              connectionStatus === 'connected'
+                ? 'bg-green-500'
+                : connectionStatus === 'connecting'
+                  ? 'bg-yellow-500 animate-pulse'
+                  : 'bg-red-500'
+            }`}></div>
+            {connectionStatus === 'connected' ? 'LIVE' : connectionStatus === 'connecting' ? 'Connecting...' : 'OFFLINE'}
+          </div>
+        </div>
       </div>
     )
   }
@@ -165,6 +146,11 @@ function App() {
                 {weatherData?.lastUpdate && (
                   <div className="text-xs text-gray-500">
                     Last Update: {new Date(weatherData.lastUpdate).toLocaleTimeString()}
+                    {/*{connectionStatus === 'disconnected' && (
+                      <span className="text-red-600 ml-1">
+                        (Data timeout - no updates in 10+ seconds)
+                      </span>
+                    )}*/}
                   </div>
                 )}
               </div>
@@ -210,7 +196,7 @@ function App() {
                 <div className="flex items-center gap-3">
                   <div className="text-right">
                     <div className="text-sm font-medium text-gray-900">John Doe</div>
-                    <div className="text-xs text-gray-600">Administrator</div>
+                    {/* <div className="text-xs text-gray-600">Administrator</div> */}
                   </div>
                   <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
                     <span className="text-white font-semibold text-sm">JD</span>

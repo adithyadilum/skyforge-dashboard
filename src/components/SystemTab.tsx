@@ -31,13 +31,7 @@ export default function SystemTab({ currentDateTime, systemData, weatherData, co
         <CardContent className="p-6">
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-bold text-gray-900">System</h2>
-            <div className="text-sm text-gray-600">
-              Last Updated: {currentDateTime.toLocaleTimeString('en-US', {
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit'
-              })}
-            </div>
+        
           </div>
         </CardContent>
       </Card>

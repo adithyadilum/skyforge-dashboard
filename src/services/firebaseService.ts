@@ -7,45 +7,117 @@ export class FirebaseService {
   private isConnected: boolean = false
   private lastDataTimestamp: number = 0
   private connectionStatusCallback: ((status: 'connected' | 'disconnected' | 'connecting') => void) | null = null
+  private currentStatus: 'connected' | 'disconnected' | 'connecting' = 'connecting'
+  private statusCheckInterval: NodeJS.Timeout | null = null
 
   // Set connection status callback
   setConnectionStatusCallback(callback: (status: 'connected' | 'disconnected' | 'connecting') => void) {
     this.connectionStatusCallback = callback
+    console.log('✅ Connection status callback has been set')
+    
+    // Immediately call with current status if we have one
+    if (this.currentStatus) {
+      console.log(`📡 Immediately calling callback with current status: ${this.currentStatus}`)
+      callback(this.currentStatus)
+    }
   }
 
-  // Check if data is live (updated within last 20 seconds for more tolerance)
+  // Check if data is live (updated within last 10 seconds)
   private isDataLive(timestamp: number): boolean {
     const currentTime = Date.now()
     const timeDiff = currentTime - timestamp
-    return timeDiff <= 20000 // 20 seconds threshold (more tolerant than 15s)
+    return timeDiff <= 10000 // 10 seconds threshold as requested
   }
 
   // Update connection status based on data freshness
   private updateConnectionStatus() {
-    if (this.lastDataTimestamp > 0) {
-      const isLive = this.isDataLive(this.lastDataTimestamp)
-      const newStatus = isLive ? 'connected' : 'disconnected'
-      this.connectionStatusCallback?.(newStatus)
-      console.log(`🔄 Connection status updated: ${newStatus} (data age: ${Math.floor((Date.now() - this.lastDataTimestamp) / 1000)}s)`)
+    if (this.lastDataTimestamp === 0) {
+      // No data received yet - if we've been connecting for more than 10 seconds, consider it disconnected
+      return
+    }
+
+    const currentTime = Date.now()
+    const timeDiff = currentTime - this.lastDataTimestamp
+    const isLive = timeDiff <= 3000 // 3 seconds threshold for real-time data
+    const newStatus = isLive ? 'connected' : 'disconnected'
+    
+    // Always update status if it's different
+    if (newStatus !== this.currentStatus) {
+      const oldStatus = this.currentStatus
+      this.currentStatus = newStatus
+      
+      // Call the callback
+      if (this.connectionStatusCallback) {
+        this.connectionStatusCallback(newStatus)
+        console.log(`📞 Called status callback: ${newStatus}`)
+      } else {
+        console.warn('⚠️ Connection status callback not set! Current status:', newStatus)
+      }
+      
+      // Log status change with data age
+      const ageSeconds = Math.floor(timeDiff / 1000)
+      console.log(`🔄 Status changed from ${oldStatus.toUpperCase()} to ${newStatus.toUpperCase()}: Data age is ${ageSeconds}s (threshold: 3s)`)
+    }
+  }
+
+  // Start monitoring data freshness
+  private startStatusMonitoring() {
+    // Clear any existing interval
+    if (this.statusCheckInterval) {
+      clearInterval(this.statusCheckInterval)
+    }
+    
+    // Check status every 1 second
+    this.statusCheckInterval = setInterval(() => {
+      this.updateConnectionStatus()
+    }, 1000)
+    
+    console.log('� Started status monitoring (checking every 1 second)')
+  }
+
+  // Stop monitoring data freshness
+  private stopStatusMonitoring() {
+    if (this.statusCheckInterval) {
+      clearInterval(this.statusCheckInterval)
+      this.statusCheckInterval = null
+      console.log('⏹️ Stopped status monitoring')
     }
   }
 
   // Subscribe to real-time weather data from sensor_data node
   subscribeToWeatherData(callback: (data: WeatherData | null) => void): () => void {
+    // Debug: Check if callback is set
+    if (!this.connectionStatusCallback) {
+      console.warn('⚠️ WARNING: Connection status callback not set! Call setConnectionStatusCallback() first.')
+    } else {
+      console.log('✅ Connection status callback is properly set')
+    }
+
     // Check if Firebase is configured
     if (!hasFirebaseConfig || !db) {
       console.log('Firebase not configured, returning null data immediately')
-      this.connectionStatusCallback?.('disconnected')
+      this.currentStatus = 'disconnected'
+      if (this.connectionStatusCallback) {
+        this.connectionStatusCallback('disconnected')
+        console.log('📞 Called status callback: disconnected (Firebase not configured)')
+      }
       setTimeout(() => callback(null), 100)
       return () => { } // Return empty unsubscribe function
     }
 
     console.log('Setting up real-time listener for sensor_data...')
-    this.connectionStatusCallback?.('connecting')
+    this.currentStatus = 'connecting'
+    if (this.connectionStatusCallback) {
+      this.connectionStatusCallback('connecting')
+      console.log('📞 Called status callback: connecting')
+    }
 
     // Listen to the latest record in sensor_data
     const sensorDataRef = ref(db, 'sensor_data')
     const latestDataQuery = query(sensorDataRef, orderByKey(), limitToLast(1))
+
+    // Start status monitoring ONCE - not on every data update
+    this.startStatusMonitoring()
 
     const unsubscribe = onValue(latestDataQuery, (snapshot) => {
       const data = snapshot.val()
@@ -57,13 +129,43 @@ export class FirebaseService {
         const latestKey = Object.keys(data)[0]
         const latestRecord = data[latestKey]
 
-        if (latestRecord) {
-          const recordTimestamp = latestRecord.timestamp * 1000 // Convert to milliseconds
+        if (latestRecord && latestRecord.timestamp) {
+          // Robust timestamp handling: support both seconds and milliseconds
+          let recordTimestamp = latestRecord.timestamp
+          if (recordTimestamp > 1e12) {
+            // Already in milliseconds
+          } else if (recordTimestamp > 1e9) {
+            // In seconds, convert to milliseconds
+            recordTimestamp = recordTimestamp * 1000
+          } else {
+            // Invalid timestamp, use current time
+            recordTimestamp = Date.now()
+          }
+          
           this.lastDataTimestamp = recordTimestamp
 
-          // Check if data is live and update connection status
-          const isLive = this.isDataLive(recordTimestamp)
-          this.connectionStatusCallback?.(isLive ? 'connected' : 'disconnected')
+          console.log(`📊 New data received - timestamp: ${recordTimestamp}, current time: ${Date.now()}`)
+
+          // Immediately check if data is live and update status
+          const currentTime = Date.now()
+          const timeDiff = currentTime - recordTimestamp
+          const isLive = timeDiff <= 3000 // 3 seconds threshold for real-time data
+          
+          console.log(`⏱️ Data age: ${Math.floor(timeDiff / 1000)}s, isLive: ${isLive}`)
+          
+          // Update status immediately when new data arrives
+          const newStatus = isLive ? 'connected' : 'disconnected'
+          if (newStatus !== this.currentStatus) {
+            const oldStatus = this.currentStatus
+            this.currentStatus = newStatus
+            
+            if (this.connectionStatusCallback) {
+              this.connectionStatusCallback(newStatus)
+              console.log(`⚡ Immediate status change: ${oldStatus.toUpperCase()} → ${newStatus.toUpperCase()}`)
+            } else {
+              console.warn('⚠️ Connection status callback not set during immediate status change!')
+            }
+          }
 
           if (!this.isConnected) {
             this.isConnected = true
@@ -122,19 +224,32 @@ export class FirebaseService {
 
           callback(weatherData)
         } else {
-          console.log('❌ No valid sensor record found')
-          this.connectionStatusCallback?.('disconnected')
+          // No valid record or missing timestamp
+          console.log('❌ No valid sensor record found or missing timestamp')
+          this.currentStatus = 'disconnected'
+          if (this.connectionStatusCallback) {
+            this.connectionStatusCallback('disconnected')
+            console.log('📞 Called status callback: disconnected (no valid sensor record)')
+          }
           callback(null)
         }
       } else {
         console.log('❌ No Firebase data available')
-        this.connectionStatusCallback?.('disconnected')
+        this.currentStatus = 'disconnected'
+        if (this.connectionStatusCallback) {
+          this.connectionStatusCallback('disconnected')
+          console.log('📞 Called status callback: disconnected (no Firebase data)')
+        }
         callback(null)
       }
     }, (error) => {
       console.error('🚨 Firebase read error:', error)
       this.isConnected = false
-      this.connectionStatusCallback?.('disconnected')
+      this.currentStatus = 'disconnected'
+      if (this.connectionStatusCallback) {
+        this.connectionStatusCallback('disconnected')
+        console.log('📞 Called status callback: disconnected (Firebase error)')
+      }
       callback(null)
     })
 
@@ -142,14 +257,9 @@ export class FirebaseService {
     const listenerId = 'weather_' + Date.now()
     this.listeners[listenerId] = unsubscribe
 
-    // Set up periodic check for data freshness (every 3 seconds)
-    const freshnesCheck = setInterval(() => {
-      this.updateConnectionStatus()
-    }, 3000) // Check every 3 seconds for more responsive status updates
-
     return () => {
       unsubscribe()
-      clearInterval(freshnesCheck)
+      this.stopStatusMonitoring()
       delete this.listeners[listenerId]
       console.log('🔌 Weather data listener unsubscribed')
     }
@@ -263,6 +373,16 @@ export class FirebaseService {
   // Get connection status
   getConnectionStatus(): boolean {
     return this.isConnected
+  }
+
+  // Get current status string for debugging
+  getCurrentStatus(): 'connected' | 'disconnected' | 'connecting' {
+    return this.currentStatus
+  }
+
+  // Debug method to check callback state
+  isCallbackSet(): boolean {
+    return this.connectionStatusCallback !== null
   }
 
   // Get historical sensor data for analytics
