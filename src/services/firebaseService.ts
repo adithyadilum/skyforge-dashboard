@@ -13,11 +13,21 @@ export class FirebaseService {
     this.connectionStatusCallback = callback
   }
 
-  // Check if data is live (updated within last 15 seconds)
+  // Check if data is live (updated within last 20 seconds for more tolerance)
   private isDataLive(timestamp: number): boolean {
     const currentTime = Date.now()
     const timeDiff = currentTime - timestamp
-    return timeDiff <= 15000 // 15 seconds threshold
+    return timeDiff <= 20000 // 20 seconds threshold (more tolerant than 15s)
+  }
+
+  // Update connection status based on data freshness
+  private updateConnectionStatus() {
+    if (this.lastDataTimestamp > 0) {
+      const isLive = this.isDataLive(this.lastDataTimestamp)
+      const newStatus = isLive ? 'connected' : 'disconnected'
+      this.connectionStatusCallback?.(newStatus)
+      console.log(`🔄 Connection status updated: ${newStatus} (data age: ${Math.floor((Date.now() - this.lastDataTimestamp) / 1000)}s)`)
+    }
   }
 
   // Subscribe to real-time weather data from sensor_data node
@@ -51,15 +61,14 @@ export class FirebaseService {
           const recordTimestamp = latestRecord.timestamp * 1000 // Convert to milliseconds
           this.lastDataTimestamp = recordTimestamp
 
-          // Check if data is live
+          // Check if data is live and update connection status
           const isLive = this.isDataLive(recordTimestamp)
+          this.connectionStatusCallback?.(isLive ? 'connected' : 'disconnected')
 
           if (!this.isConnected) {
             this.isConnected = true
             console.log('🔥 Firebase real-time connection established!')
           }
-
-          this.connectionStatusCallback?.(isLive ? 'connected' : 'disconnected')
 
           // Transform Firebase data to match WeatherData interface
           const weatherData: WeatherData = {
@@ -133,13 +142,10 @@ export class FirebaseService {
     const listenerId = 'weather_' + Date.now()
     this.listeners[listenerId] = unsubscribe
 
-    // Set up periodic check for data freshness
+    // Set up periodic check for data freshness (every 3 seconds)
     const freshnesCheck = setInterval(() => {
-      if (this.lastDataTimestamp > 0) {
-        const isLive = this.isDataLive(this.lastDataTimestamp)
-        this.connectionStatusCallback?.(isLive ? 'connected' : 'disconnected')
-      }
-    }, 5000) // Check every 5 seconds
+      this.updateConnectionStatus()
+    }, 3000) // Check every 3 seconds for more responsive status updates
 
     return () => {
       unsubscribe()

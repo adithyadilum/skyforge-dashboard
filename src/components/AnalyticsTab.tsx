@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback, useEffect, useState } from "react"
+import React, { useMemo, useCallback, useEffect, useState, useRef } from "react"
 import { Sun, Thermometer, Droplets, Gauge, Wind, MapPin, BarChart3, TrendingUp, Download, FileText, RefreshCw, ChevronDown, Mountain } from "lucide-react"
 import { Card, CardContent } from "./ui/card"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts'
@@ -98,24 +98,53 @@ AltitudeChart.displayName = 'AltitudeChart'
 const AnalyticsTab = React.memo(({ }: AnalyticsTabProps) => {
   const [historicalData, setHistoricalData] = useState<WeatherData[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [recordLimit, setRecordLimit] = useState(50) // Add record limit state
+  const [autoRefresh, setAutoRefresh] = useState(true) // Auto-refresh toggle
+  const [error, setError] = useState<string | null>(null)
+  const [refreshInterval, setRefreshInterval] = useState(10) // Refresh interval in seconds
+  const intervalRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Fetch historical data on component mount
+  // Fetch historical data function
+  const fetchHistoricalData = useCallback(async (limit: number = recordLimit) => {
+    setIsLoading(true)
+    setError(null) // Clear previous errors
+    try {
+      const data = await firebaseService.getHistoricalData(limit)
+      setHistoricalData(data)
+      console.log('📊 Historical data loaded for analytics:', data.length, 'records')
+    } catch (error) {
+      console.error('❌ Error fetching historical data:', error)
+      setError(error instanceof Error ? error.message : 'Failed to fetch data')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [recordLimit])
+
+  // Fetch historical data on component mount and set up auto-refresh
   useEffect(() => {
-    const fetchHistoricalData = async () => {
-      setIsLoading(true)
-      try {
-        const data = await firebaseService.getHistoricalData(50) // Get last 50 records
-        setHistoricalData(data)
-        console.log('📊 Historical data loaded for analytics:', data.length, 'records')
-      } catch (error) {
-        console.error('❌ Error fetching historical data:', error)
-      } finally {
-        setIsLoading(false)
-      }
+    // Initial data fetch
+    fetchHistoricalData()
+
+    // Clear any existing interval
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current)
+      intervalRef.current = null
     }
 
-    fetchHistoricalData()
-  }, [])
+    // Set up auto-refresh interval if enabled
+    if (autoRefresh) {
+      intervalRef.current = setInterval(() => {
+        fetchHistoricalData()
+      }, refreshInterval * 1000) // Convert seconds to milliseconds
+    }
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current)
+        intervalRef.current = null
+      }
+    }
+  }, [fetchHistoricalData, autoRefresh, refreshInterval])
 
   // Process historical data for charts
   const chartData = useMemo(() => {
@@ -239,17 +268,14 @@ const AnalyticsTab = React.memo(({ }: AnalyticsTabProps) => {
 
   // Refresh historical data
   const refreshData = useCallback(async () => {
-    setIsLoading(true)
-    try {
-      const data = await firebaseService.getHistoricalData(50)
-      setHistoricalData(data)
-      console.log('🔄 Historical data refreshed:', data.length, 'records')
-    } catch (error) {
-      console.error('❌ Error refreshing historical data:', error)
-    } finally {
-      setIsLoading(false)
-    }
-  }, [])
+    await fetchHistoricalData(recordLimit)
+  }, [fetchHistoricalData, recordLimit])
+
+  // Handle record limit change
+  const handleLimitChange = (newLimit: number) => {
+    setRecordLimit(newLimit)
+    fetchHistoricalData(newLimit)
+  }
 
   // Export CSV function
   const exportToCSV = useCallback(() => {
@@ -334,14 +360,44 @@ ${gpsTrail.map((coord, index) =>
                 <span>Records: {historicalData.length}</span>
               </div>
               <div className="relative">
-                <select className="appearance-none bg-white border border-gray-300 rounded-md px-4 py-2 pr-8 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
-                  <option>Last 50 records</option>
-                  <option>Last 100 records</option>
-                  <option>Last 24h</option>
-                  <option>Last 7d</option>
+                <select
+                  value={recordLimit}
+                  onChange={(e) => handleLimitChange(Number(e.target.value))}
+                  className="appearance-none bg-white border border-gray-300 rounded-md px-4 py-2 pr-8 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
+                >
+                  <option value={25}>Last 25 records</option>
+                  <option value={50}>Last 50 records</option>
+                  <option value={100}>Last 100 records</option>
+                  <option value={200}>Last 200 records</option>
                 </select>
                 <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
               </div>
+              <button
+                onClick={() => setAutoRefresh(!autoRefresh)}
+                className={`flex items-center gap-2 px-3 py-2 rounded-md transition-colors text-sm ${autoRefresh
+                    ? 'bg-green-500 text-white hover:bg-green-600'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+              >
+                <RefreshCw className={`w-4 h-4 ${autoRefresh ? 'animate-pulse' : ''}`} />
+                Auto: {autoRefresh ? 'ON' : 'OFF'}
+              </button>
+              {autoRefresh && (
+                <div className="relative">
+                  <select
+                    value={refreshInterval}
+                    onChange={(e) => setRefreshInterval(Number(e.target.value))}
+                    className="appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 pr-8 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
+                  >
+                    <option value={5}>5s</option>
+                    <option value={10}>10s</option>
+                    <option value={15}>15s</option>
+                    <option value={30}>30s</option>
+                    <option value={60}>1m</option>
+                  </select>
+                  <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-3 h-3 text-gray-500 pointer-events-none" />
+                </div>
+              )}
               <button
                 onClick={refreshData}
                 disabled={isLoading}
@@ -362,8 +418,14 @@ ${gpsTrail.map((coord, index) =>
               No historical data loaded. Check Firebase connection.
             </div>
           )}
+          {error && (
+            <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
+              <div className="text-sm text-red-600 font-medium">Error loading data:</div>
+              <div className="text-sm text-red-500">{error}</div>
+            </div>
+          )}
           <div className="mt-2 text-xs text-gray-500">
-            Debug: {historicalData.length} records loaded, Latest temp: {historicalData[historicalData.length - 1]?.temperature?.celsius || 'N/A'}°C
+            Analytics: {historicalData.length} records loaded • Latest temp: {historicalData[historicalData.length - 1]?.temperature?.celsius || 'N/A'}°C • Auto-refresh: {autoRefresh ? `ON (${refreshInterval}s)` : 'OFF'}
           </div>
         </CardContent>
       </Card>
