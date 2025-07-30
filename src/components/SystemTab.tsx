@@ -1,4 +1,4 @@
-import { Battery, Cpu, CheckCircle, MapPin, AlertCircle, Clock } from "lucide-react"
+import { Battery, Cpu, CheckCircle, MapPin, AlertCircle, Clock, Flame } from "lucide-react"
 import { Card, CardContent } from "./ui/card"
 import { WeatherData } from "../types"
 
@@ -47,7 +47,8 @@ export default function SystemTab({ currentDateTime, systemData, weatherData, co
         <CardContent className="p-6">
           <div className="mb-4">
             <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              🔥 Firebase Connection Status
+              <Flame className="w-5 h-5 text-orange-500" />
+               Firebase Connection Status
             </h3>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
