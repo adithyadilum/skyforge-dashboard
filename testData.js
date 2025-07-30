@@ -3,15 +3,18 @@
 
 import { initializeApp } from "firebase/app"
 import { getDatabase, ref, set } from "firebase/database"
+import dotenv from "dotenv"
+
+dotenv.config()
 
 const firebaseConfig = {
-  apiKey: "AIzaSyA5IRjwAdvgSQ8K9sTkfdjEgFO_P1K-PdM",
-  authDomain: "skyforge-4606b.firebaseapp.com",
-  databaseURL: "https://skyforge-4606b-default-rtdb.asia-southeast1.firebasedatabase.app/",
-  projectId: "skyforge-4606b",
-  storageBucket: "skyforge-4606b.firebasestorage.app",
-  messagingSenderId: "113983013806",
-  appId: "1:113983013806:web:b37570450de08e7a147e3f"
+  apiKey: process.env.FIREBASE_API_KEY,
+  authDomain: process.env.FIREBASE_AUTH_DOMAIN,
+  databaseURL: process.env.FIREBASE_DATABASE_URL,
+  projectId: process.env.FIREBASE_PROJECT_ID,
+  storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.FIREBASE_APP_ID
 }
 
 // Initialize Firebase
@@ -58,18 +61,18 @@ const testSystemData = {
 async function insertTestData() {
   try {
     console.log('🔥 Inserting test data into Firebase...')
-    
+
     // Insert sensor data
     await set(ref(database, 'sensorData'), testSensorData)
     console.log('✅ Sensor data inserted successfully')
-    
+
     // Insert system data
     await set(ref(database, 'systemData'), testSystemData)
     console.log('✅ System data inserted successfully')
-    
+
     console.log('🎉 Test data insertion complete!')
     console.log('Your dashboard should now show live data!')
-    
+
   } catch (error) {
     console.error('❌ Error inserting test data:', error)
     console.log('Check your Firebase Realtime Database rules and permissions')
