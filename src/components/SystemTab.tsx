@@ -1,6 +1,8 @@
-import { Battery, Cpu, CheckCircle, MapPin, AlertCircle, Clock, Flame } from "lucide-react"
+import { Battery, Cpu, CheckCircle, AlertCircle, Clock, Flame } from "lucide-react"
 import { Card, CardContent } from "./ui/card"
 import { WeatherData } from "../types"
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
+import 'leaflet/dist/leaflet.css'
 
 interface SystemTabProps {
   currentDateTime: Date
@@ -115,13 +117,24 @@ export default function SystemTab({ currentDateTime, systemData, weatherData, co
             {/* Map Section - Left Side */}
             <div className="flex flex-col">
               <h4 className="font-medium text-gray-700 mb-3">Current Position</h4>
-              <div className="bg-gray-200 h-48 rounded-lg flex items-center justify-center relative overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-br from-gray-300 to-gray-400 opacity-50"></div>
-                <MapPin className="w-8 h-8 text-gray-600 z-10" />
-                <div className="absolute bottom-3 left-3 text-sm font-medium text-gray-700">
-                  {weatherData?.location?.latitude?.toFixed(4) || '7.2901'}° N, {Math.abs(weatherData?.location?.longitude || -80.6337).toFixed(4)}° E
-                </div>
-                <div className={`absolute top-3 right-3 text-xs px-2 py-1 rounded ${connectionStatus === 'connected' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+              <div className="h-48 rounded-lg relative overflow-hidden">
+                <MapContainer
+                  center={[weatherData?.location?.latitude || 7.2901, weatherData?.location?.longitude || -80.6337]}
+                  zoom={13}
+                  style={{ height: '12rem', width: '100%' }}
+                  className="rounded-lg"
+                >
+                  <TileLayer
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                  />
+                  <Marker position={[weatherData?.location?.latitude || 7.2901, weatherData?.location?.longitude || -80.6337]}>
+                    <Popup>
+                      Current Location: {weatherData?.location?.latitude?.toFixed(4) || '7.2901'}°N, {Math.abs(weatherData?.location?.longitude || -80.6337).toFixed(4)}°E
+                    </Popup>
+                  </Marker>
+                </MapContainer>
+                <div className={`absolute top-3 right-3 text-xs px-2 py-1 rounded z-[1000] ${connectionStatus === 'connected' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                   }`}>
                   {connectionStatus === 'connected' ? 'Live GPS' : 'GPS Offline'}
                 </div>

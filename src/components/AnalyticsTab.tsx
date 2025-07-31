@@ -1,8 +1,10 @@
 import React, { useMemo, useCallback, useEffect, useState, useRef } from "react"
-import { Sun, Thermometer, Droplets, Gauge, Wind, MapPin, BarChart3, TrendingUp, Download, FileText, RefreshCw, ChevronDown, Mountain } from "lucide-react"
+import { Sun, Thermometer, Droplets, Gauge, Wind, BarChart3, TrendingUp, Download, FileText, RefreshCw, ChevronDown, Mountain } from "lucide-react"
 import { Card, CardContent } from "./ui/card"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts'
 import { WeatherData } from '../types'
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
+import 'leaflet/dist/leaflet.css'
 import { firebaseService } from '../services/firebaseService'
 
 interface AnalyticsTabProps {
@@ -539,21 +541,30 @@ ${gpsTrail.map((coord, index) =>
             {/* GPS Trail Map Placeholder */}
             <div className="bg-gray-50 rounded-lg p-4">
               <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-green-500" />
+                <Mountain className="w-4 h-4 text-green-500" />
                 GPS Trail
               </h4>
-              <div className="h-64 rounded-lg overflow-hidden bg-gray-200 flex flex-col items-center justify-center">
-                <div className="text-center">
-                  <MapPin className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-                  <p className="text-gray-600 font-medium">GPS Coordinates</p>
-                  <p className="text-sm text-gray-500 mb-2">{gpsTrail.length} position points</p>
+              <div className="h-64 rounded-lg overflow-hidden relative">
+                <MapContainer
+                  center={[gpsTrail.length > 0 ? gpsTrail[0][0] : 7.2901, gpsTrail.length > 0 ? gpsTrail[0][1] : -80.6337]}
+                  zoom={13}
+                  style={{ height: '16rem', width: '100%' }}
+                  className="rounded-lg"
+                >
+                  <TileLayer
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                  />
                   {gpsTrail.length > 0 && (
-                    <div className="text-xs text-gray-600 space-y-1">
-                      <div>Start: {gpsTrail[0][0].toFixed(4)}, {gpsTrail[0][1].toFixed(4)}</div>
-                      <div>End: {gpsTrail[gpsTrail.length - 1][0].toFixed(4)}, {gpsTrail[gpsTrail.length - 1][1].toFixed(4)}</div>
-                    </div>
+                    <Marker position={[gpsTrail[gpsTrail.length - 1][0], gpsTrail[gpsTrail.length - 1][1]]}>
+                      <Popup>
+                        Current Location: {gpsTrail[gpsTrail.length - 1][0].toFixed(4)}°N, {gpsTrail[gpsTrail.length - 1][1].toFixed(4)}°E
+                        <br />
+                        GPS Trail: {gpsTrail.length} position points
+                      </Popup>
+                    </Marker>
                   )}
-                </div>
+                </MapContainer>
               </div>
             </div>
 

@@ -1,8 +1,19 @@
 import { useState } from "react"
-import { Sun, Thermometer, Droplets, Gauge, Wind, MapPin, Satellite, Mountain, ChevronDown } from "lucide-react"
+import { Sun, Thermometer, Droplets, Gauge, Wind, Satellite, Mountain, ChevronDown } from "lucide-react"
 import { Card, CardContent } from "./ui/card"
 import UvGauge from "./ui/UvGauge"
 import { WeatherData } from "../types"
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
+import 'leaflet/dist/leaflet.css'
+import L from 'leaflet'
+
+// Fix for default markers in react-leaflet
+delete (L.Icon.Default.prototype as any)._getIconUrl
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+})
 
 interface LiveTabProps {
   weatherData: WeatherData
@@ -180,13 +191,24 @@ export default function LiveTab({ weatherData }: LiveTabProps) {
         {/* Map Card */}
         <Card className="shadow-md shadow-gray-200/40 hover:shadow-lg hover:shadow-gray-200/50 transition-shadow duration-300">
           <CardContent className="p-4">
-            <div className="bg-gray-200 h-48 rounded-lg flex items-center justify-center mb-2 relative overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-br from-gray-300 to-gray-400 opacity-50"></div>
-              <MapPin className="w-6 h-6 text-gray-600 z-10" />
-              <div className="absolute bottom-2 left-2 text-xs font-medium text-gray-700">
-                {weatherData.location.latitude.toFixed(4)}° N, {Math.abs(weatherData.location.longitude).toFixed(4)}
-                ° W
-              </div>
+            <div className="h-48 rounded-lg overflow-hidden relative">
+              <MapContainer
+                center={[weatherData.location.latitude, weatherData.location.longitude]}
+                zoom={13}
+                style={{ height: '100%', width: '100%' }}
+                className="rounded-lg"
+              >
+                <TileLayer
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                />
+                <Marker position={[weatherData.location.latitude, weatherData.location.longitude]}>
+                  <Popup>
+                    Sensor Location<br />
+                    {weatherData.location.latitude.toFixed(4)}°N, {Math.abs(weatherData.location.longitude).toFixed(4)}°W
+                  </Popup>
+                </Marker>
+              </MapContainer>
             </div>
           </CardContent>
         </Card>
