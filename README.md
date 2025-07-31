@@ -30,14 +30,23 @@ ESP32 Sensors → WiFi → Firebase Realtime DB → React Web App → Interactiv
 
 ## 🚀 Features
 
-### 📱 Web Dashboard
+### � Google Authentication (NEW)
+
+- **Secure Google Sign-In**: OAuth2 authentication using Firebase Auth
+- **User Profile Display**: Shows Google account name and profile picture in top-right corner
+- **Session Management**: Automatic sign-in persistence and secure sign-out functionality
+- **Protected Dashboard**: Only authenticated users can access the weather monitoring dashboard
+- **Profile Dropdown**: Interactive dropdown with user information and sign-out option
+- **Elegant Login Interface**: Clean, professional sign-in page with Google branding
+
+### �📱 Web Dashboard
 
 - **3 Navigation Tabs**: Live, System, Analytics
 - **Real-time Data Display**: Temperature, humidity, pressure, UV, CO2, wind, GPS
 - **Intelligent Connection Monitoring**: 3-second timeout with automatic status switching
 - **Interactive Maps**: Live GPS tracking with OpenStreetMap integration
 - **Smooth UI Components**: Enhanced shadows and responsive design
-- **User Profile**: Real-time date/time display
+- **User Authentication**: Secure Google login with profile management
 
 ### 🗺️ Interactive Maps (NEW)
 
@@ -137,7 +146,18 @@ ESP32 Sensors → WiFi → Firebase Realtime DB → React Web App → Interactiv
 - [x] Loading indicators and error handling
 - [x] Performance optimization with memoization
 
-#### Phase 7: ESP32 Code Development (Completed)
+#### Phase 7: Google Authentication Integration (Completed)
+
+- [x] Firebase Authentication setup with Google provider
+- [x] Secure Google OAuth2 sign-in implementation
+- [x] User profile display with name and profile picture
+- [x] Protected routes - dashboard only accessible to authenticated users
+- [x] Interactive profile dropdown with user information
+- [x] Session persistence across browser sessions
+- [x] Elegant login page with Google branding
+- [x] Secure sign-out functionality
+
+#### Phase 8: ESP32 Code Development (Completed)
 
 - [x] WiFi connection handling
 - [x] NTP time synchronization
@@ -150,8 +170,8 @@ ESP32 Sensors → WiFi → Firebase Realtime DB → React Web App → Interactiv
 
 - **Development Phase**: Production Ready
 - **Last Updated**: July 31, 2025
-- **Active Branch**: `firebase-connection`
-- **New Features**: Interactive Leaflet maps, intelligent connection monitoring
+- **Active Branch**: `GoogleLogin`
+- **New Features**: Google Authentication, user profile management
 
 ## 🛠️ Technology Stack
 
@@ -166,6 +186,7 @@ ESP32 Sensors → WiFi → Firebase Realtime DB → React Web App → Interactiv
 ### Backend & Database
 
 - **Firebase Realtime Database** - Real-time data storage
+- **Firebase Authentication** - Google OAuth2 sign-in
 - **Firebase SDK** - JavaScript client
 
 ### Data Visualization & Maps
@@ -225,7 +246,12 @@ ESP32 Sensors → WiFi → Firebase Realtime DB → React Web App → Interactiv
    VITE_FIREBASE_APP_ID=your_app_id
    ```
 
-4. **Start development server**
+4. **Enable Google Authentication in Firebase Console**:
+   - Go to Authentication → Sign-in method
+   - Enable Google provider
+   - Add authorized domains (localhost, your production domain)
+
+5. **Start development server**
    ```bash
    npm run dev
    ```
@@ -307,10 +333,12 @@ ESP32 Sensors → WiFi → Firebase Realtime DB → React Web App → Interactiv
 
 1. **Power on ESP32** - Starts sending sensor data
 2. **Open web dashboard** - Navigate to `http://localhost:5173`
-3. **Monitor Live tab** - Real-time sensor readings with interactive GPS map
-4. **Check System tab** - Connection status, health, and live position tracking
-5. **Analyze data** - Historical trends and GPS trail in Analytics tab
-6. **Interact with maps** - Zoom, pan, and click markers for detailed information
+3. **Sign in with Google** - Click "Continue with Google" and authenticate
+4. **Monitor Live tab** - Real-time sensor readings with interactive GPS map
+5. **Check System tab** - Connection status, health, and live position tracking
+6. **Analyze data** - Historical trends and GPS trail in Analytics tab
+7. **Interact with maps** - Zoom, pan, and click markers for detailed information
+8. **Sign out** - Click your profile picture and select "Sign out"
 
 ## 🗺️ Map Features
 
@@ -331,14 +359,14 @@ ESP32 Sensors → WiFi → Firebase Realtime DB → React Web App → Interactiv
 
 ## 🚧 Roadmap
 
-### Phase 8: Production Deployment (In Progress)
+### Phase 9: Production Deployment (In Progress)
 
 - [ ] Production Firebase setup
 - [ ] Environment-specific configurations
 - [ ] Performance monitoring
 - [ ] Error tracking and logging
 
-### Phase 9: Enhanced Features (Planned)
+### Phase 10: Enhanced Features (Planned)
 
 - [ ] Data export functionality (CSV, JSON)
 - [ ] Email/SMS alerts for threshold breaches
@@ -347,7 +375,7 @@ ESP32 Sensors → WiFi → Firebase Realtime DB → React Web App → Interactiv
 - [ ] GPS trail playback and animation
 - [ ] Custom map markers and themes
 
-### Phase 10: Mobile App (Future)
+### Phase 11: Mobile App (Future)
 
 - [ ] React Native mobile application
 - [ ] Push notifications
@@ -375,6 +403,12 @@ ESP32 Sensors → WiFi → Firebase Realtime DB → React Web App → Interactiv
 - Monitor browser console for errors
 - Ensure ESP32 has stable WiFi connection
 
+### Authentication Issues
+- Verify Firebase Authentication is enabled in Firebase Console
+- Check Google OAuth2 configuration and authorized domains
+- Ensure VITE_FIREBASE_AUTH_DOMAIN is correctly set in .env file
+- Monitor browser console for authentication errors
+
 ## 🤝 Contributing
 
 1. Fork the repository
@@ -398,7 +432,7 @@ For questions or issues:
 ---
 
 **Last Updated**: July 31, 2025  
-**Version**: 2.0.0  
+**Version**: 3.0.0  
 **Status**: Production Ready  
-**Branch**: firebase-connection  
-**New Features**: Interactive Leaflet maps, intelligent connection monitoring, GPS trail visualization
+**Branch**: GoogleLogin  
+**New Features**: Google Authentication, Interactive Leaflet maps, intelligent connection monitoring, GPS trail visualization

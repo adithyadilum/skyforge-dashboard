@@ -1,5 +1,6 @@
 import { initializeApp, getApps } from "firebase/app"
 import { getDatabase } from "firebase/database"
+import { getAuth, GoogleAuthProvider } from "firebase/auth"
 
 // Check if Firebase is properly configured
 const hasFirebaseConfig = !!(
@@ -28,13 +29,30 @@ const firebaseConfig = {
 }
 
 let db: any = null
+let auth: any = null
+let googleProvider: GoogleAuthProvider | null = null
 
 try {
   if (hasFirebaseConfig) {
     // Avoid re-initialising during hot-reload in Vite
     const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig)
     db = getDatabase(app)
-    console.log("Firebase initialized successfully")
+    auth = getAuth(app)
+    googleProvider = new GoogleAuthProvider()
+    
+    // Configure Google provider with necessary scopes
+    googleProvider.addScope('profile')
+    googleProvider.addScope('email')
+    googleProvider.addScope('openid')
+    
+    // Set custom parameters for high-quality profile pictures
+    googleProvider.setCustomParameters({
+      prompt: 'select_account',
+      include_granted_scopes: 'true'
+    })
+    
+    console.log("Firebase initialized successfully with authentication")
+    console.log("Google Provider configured with scopes:", ['profile', 'email', 'openid'])
   } else {
     console.warn("Firebase configuration incomplete - using mock data mode")
   }
@@ -42,4 +60,4 @@ try {
   console.error("Firebase initialization failed:", error)
 }
 
-export { db, hasFirebaseConfig }
+export { db, auth, googleProvider, hasFirebaseConfig }
