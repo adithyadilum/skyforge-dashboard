@@ -3,16 +3,32 @@ import { Card, CardContent } from "./components/ui/card"
 import LiveTab from "./components/LiveTab"
 import SystemTab from "./components/SystemTab"
 import AnalyticsTab from "./components/AnalyticsTab"
+import LoginPage from "./components/LoginPage"
+import UserProfile from "./components/UserProfile"
 import { WeatherData } from "./types"
 import { firebaseService } from "./services/firebaseService"
+import { authService } from "./services/authService"
 
 function App() {
+  const [user, setUser] = useState<any>(null)
+  const [authLoading, setAuthLoading] = useState(true)
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null)
   const [systemData, setSystemData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState("Live")
   const [currentDateTime, setCurrentDateTime] = useState(new Date())
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'connecting'>('connecting')
+
+  // Auth state monitoring
+  useEffect(() => {
+    const unsubscribe = authService.onAuthStateChange((user) => {
+      setUser(user)
+      setAuthLoading(false)
+      console.log('Auth state changed:', user ? `Signed in as ${user.displayName}` : 'Signed out')
+    })
+
+    return unsubscribe
+  }, [])
 
   useEffect(() => {
     // Update date/time every second
@@ -24,7 +40,16 @@ function App() {
   }, [])
 
   useEffect(() => {
-    console.log("Initializing dashboard...")
+    // Only initialize Firebase data subscription when user is authenticated
+    if (!user) {
+      setWeatherData(null)
+      setSystemData(null)
+      setLoading(false)
+      return
+    }
+
+    console.log("Initializing dashboard for authenticated user...")
+    setLoading(true)
     setConnectionStatus('connecting')
 
     // Set up connection status monitoring
@@ -33,16 +58,15 @@ function App() {
       console.log(`📡 Connection status changed to: ${status}`)
     })
 
-    // Subscribe to real-time Firebase data (no timeout fallback)
+    // Subscribe to real-time Firebase data
     console.log("Connecting to Firebase...")
     const weatherUnsubscribe = firebaseService.subscribeToWeatherData((data) => {
       if (data) {
         console.log("Received Firebase weather data:", data)
         setWeatherData(data)
-        // Connection status is handled by the service itself based on data freshness
       } else {
         console.log("No Firebase weather data available")
-        setWeatherData(null) // No mock data fallback
+        setWeatherData(null)
       }
       setLoading(false)
     })
@@ -55,18 +79,48 @@ function App() {
       }
     })
 
-    // Set loading to false after a short delay to show the app
+    // Set loading to false after timeout
     const initialLoadTimeout = setTimeout(() => {
       setLoading(false)
-    }, 2000) // 2 second initial loading
+    }, 3000)
 
     // Cleanup subscriptions on unmount
     return () => {
       clearTimeout(initialLoadTimeout)
       weatherUnsubscribe()
       systemUnsubscribe()
+      firebaseService.cleanup()
     }
-  }, [])
+  }, [user])
+
+  const handleLoginSuccess = () => {
+    console.log('Login successful, starting data subscription...')
+  }
+
+  const handleSignOut = () => {
+    setUser(null)
+    setWeatherData(null)
+    setSystemData(null)
+    setConnectionStatus('connecting')
+    setActiveTab('Live')
+  }
+
+  // Show loading screen while checking auth state
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-xl mb-2">Loading...</div>
+          <div className="text-sm text-gray-600">Checking authentication</div>
+        </div>
+      </div>
+    )
+  }
+
+  // Show login page if not authenticated
+  if (!user) {
+    return <LoginPage onLoginSuccess={handleLoginSuccess} />
+  }
 
   if (loading) {
     return (
@@ -95,21 +149,8 @@ function App() {
               ? 'Database not receiving data. Check your sensors and Firebase connection.'
               : 'Waiting for sensor data...'}
           </div>
-          <div className={`mt-4 inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium ${
-            connectionStatus === 'connected'
-              ? 'bg-green-100 text-green-800'
-              : connectionStatus === 'connecting'
-                ? 'bg-yellow-100 text-yellow-800'
-                : 'bg-red-100 text-red-800'
-          }`}>
-            <div className={`w-2 h-2 rounded-full ${
-              connectionStatus === 'connected'
-                ? 'bg-green-500'
-                : connectionStatus === 'connecting'
-                  ? 'bg-yellow-500 animate-pulse'
-                  : 'bg-red-500'
-            }`}></div>
-            {connectionStatus === 'connected' ? 'LIVE' : connectionStatus === 'connecting' ? 'Connecting...' : 'OFFLINE'}
+          <div className="mt-4">
+            <UserProfile user={user} onSignOut={handleSignOut} />
           </div>
         </div>
       </div>
@@ -193,15 +234,7 @@ function App() {
                 </div>
 
                 {/* User Profile */}
-                <div className="flex items-center gap-3">
-                  <div className="text-right">
-                    <div className="text-sm font-medium text-gray-900">John Doe</div>
-                    {/* <div className="text-xs text-gray-600">Administrator</div> */}
-                  </div>
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                    <span className="text-white font-semibold text-sm">JD</span>
-                  </div>
-                </div>
+                <UserProfile user={user} onSignOut={handleSignOut} />
               </div>
             </div>
           </CardContent>

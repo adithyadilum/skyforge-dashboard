@@ -6,6 +6,7 @@ import { WeatherData } from '../types'
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import { firebaseService } from '../services/firebaseService'
+import jsPDF from 'jspdf'
 
 interface AnalyticsTabProps {
   weatherData?: WeatherData | null
@@ -303,44 +304,89 @@ const AnalyticsTab = React.memo(({ weatherData }: AnalyticsTabProps) => {
 
   // Generate PDF report function
   const generatePDFReport = useCallback(() => {
-    const reportContent = `
-SkyForge Analytics Report
-Generated: ${new Date().toLocaleString()}
-
-=== ENVIRONMENTAL DATA ===
-${environmentalData.map(data =>
-      `${data.time}: Temp ${data.temperature}°C, Humidity ${data.humidity}%, Pressure ${data.pressure}hPa, UV ${data.uv}`
-    ).join('\n')}
-
-=== FLIGHT DATA ===
-${flightData.map(data =>
-      `${data.time}: Speed ${data.speed}m/s, Altitude ${data.altitude}m`
-    ).join('\n')}
-
-=== INSIGHTS ===
-- Average Temperature: 27.6°C
-- Max UV Today: 5.3
-- CO₂ Trend: Steady → Rising
-- Light Peak Time: 11:50 AM
-
-=== GPS TRAIL ===
-${gpsTrail.map((coord, index) =>
-      `Point ${index + 1}: ${coord[0]}, ${coord[1]}`
-    ).join('\n')}
-    `.trim()
-
-    const blob = new Blob([reportContent], { type: 'text/plain;charset=utf-8;' })
-    const link = document.createElement('a')
-
-    if (link.download !== undefined) {
-      const url = URL.createObjectURL(blob)
-      link.setAttribute('href', url)
-      link.setAttribute('download', `skyforge_report_${new Date().toISOString().split('T')[0]}.txt`)
-      link.style.visibility = 'hidden'
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
+    const doc = new jsPDF()
+    
+    // Set title
+    doc.setFontSize(20)
+    doc.text('SkyForge Analytics Report', 20, 30)
+    
+    // Set subtitle
+    doc.setFontSize(12)
+    doc.text(`Generated: ${new Date().toLocaleString()}`, 20, 45)
+    
+    let yPosition = 65
+    
+    // Environmental Data Section
+    doc.setFontSize(16)
+    doc.text('ENVIRONMENTAL DATA', 20, yPosition)
+    yPosition += 15
+    
+    doc.setFontSize(10)
+    environmentalData.slice(0, 10).forEach(data => {
+      const text = `${data.time}: Temp ${data.temperature}°C, Humidity ${data.humidity}%, Pressure ${data.pressure}hPa, UV ${data.uv}`
+      doc.text(text, 20, yPosition)
+      yPosition += 8
+    })
+    
+    yPosition += 10
+    
+    // Flight Data Section
+    doc.setFontSize(16)
+    doc.text('FLIGHT DATA', 20, yPosition)
+    yPosition += 15
+    
+    doc.setFontSize(10)
+    flightData.slice(0, 10).forEach(data => {
+      const text = `${data.time}: Speed ${data.speed}m/s, Altitude ${data.altitude}m`
+      doc.text(text, 20, yPosition)
+      yPosition += 8
+    })
+    
+    yPosition += 10
+    
+    // Insights Section
+    doc.setFontSize(16)
+    doc.text('INSIGHTS', 20, yPosition)
+    yPosition += 15
+    
+    doc.setFontSize(10)
+    const insights = [
+      '- Average Temperature: 27.6°C',
+      '- Max UV Today: 5.3',
+      '- CO₂ Trend: Steady → Rising',
+      '- Light Peak Time: 11:50 AM'
+    ]
+    
+    insights.forEach(insight => {
+      doc.text(insight, 20, yPosition)
+      yPosition += 8
+    })
+    
+    yPosition += 10
+    
+    // GPS Trail Section
+    if (yPosition > 250) {
+      doc.addPage()
+      yPosition = 30
     }
+    
+    doc.setFontSize(16)
+    doc.text('GPS TRAIL', 20, yPosition)
+    yPosition += 15
+    
+    doc.setFontSize(10)
+    gpsTrail.slice(0, 15).forEach((coord, index) => {
+      if (yPosition > 280) {
+        doc.addPage()
+        yPosition = 30
+      }
+      const text = `Point ${index + 1}: ${coord[0]}, ${coord[1]}`
+      doc.text(text, 20, yPosition)
+      yPosition += 8
+    })
+    
+    // Save the PDF
+    doc.save(`skyforge_report_${new Date().toISOString().split('T')[0]}.pdf`)
   }, [environmentalData, flightData, gpsTrail])
 
   return (
@@ -358,9 +404,9 @@ ${gpsTrail.map((coord, index) =>
             </h2>
             {/* Time Range Selector and Controls */}
             <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2 text-sm text-gray-600">
+             {/* <div className="flex items-center gap-2 text-sm text-gray-600">
                 <span>Records: {historicalData.length}</span>
-              </div>
+              </div> */}
               <div className="relative">
                 <select
                   value={recordLimit}
@@ -410,7 +456,7 @@ ${gpsTrail.map((coord, index) =>
               </button>
             </div>
           </div>
-          {historicalData.length > 0 && (
+          {/*{historicalData.length > 0 && (
             <div className="mt-4 text-sm text-gray-600">
               Showing data from {new Date(historicalData[0]?.lastUpdate || 0).toLocaleString()} to {new Date(historicalData[historicalData.length - 1]?.lastUpdate || 0).toLocaleString()}
             </div>
@@ -425,7 +471,7 @@ ${gpsTrail.map((coord, index) =>
               <div className="text-sm text-red-600 font-medium">Error loading data:</div>
               <div className="text-sm text-red-500">{error}</div>
             </div>
-          )}
+          )}*/}
           <div className="mt-2 text-xs text-gray-500">
             Analytics: {historicalData.length} records loaded • Latest temp: {historicalData[historicalData.length - 1]?.temperature?.celsius || 'N/A'}°C • Auto-refresh: {autoRefresh ? `ON (${refreshInterval}s)` : 'OFF'}
           </div>
