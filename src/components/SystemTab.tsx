@@ -26,6 +26,137 @@ export default function SystemTab({ currentDateTime, systemData, weatherData, co
     const ageMs = Date.now() - weatherData.lastUpdate
     return ageMs <= 15000 // Fresh if less than 15 seconds old
   }
+
+  // Helper functions to check sensor status
+  const isAHT21Working = () => {
+    // Log all weatherData for debugging
+    console.log('Full weatherData object:', weatherData)
+    
+    // Check if we have valid temperature and humidity data
+    const hasTemp = weatherData?.temperature?.celsius !== undefined && 
+                   weatherData?.temperature?.celsius !== null &&
+                   weatherData.temperature.celsius !== 0 && 
+                   !isNaN(weatherData.temperature.celsius) &&
+                   weatherData.temperature.celsius > -50 && 
+                   weatherData.temperature.celsius < 100
+    const hasHumidity = weatherData?.humidity !== undefined &&
+                       weatherData?.humidity !== null &&
+                       weatherData.humidity !== 0 && 
+                       !isNaN(weatherData.humidity) &&
+                       weatherData.humidity >= 0 &&
+                       weatherData.humidity <= 100
+    
+    console.log('AHT21 Status Check:', { 
+      connectionStatus,
+      temp: weatherData?.temperature?.celsius, 
+      humidity: weatherData?.humidity, 
+      hasTemp, 
+      hasHumidity,
+      finalStatus: hasTemp && hasHumidity
+    })
+    
+    return hasTemp && hasHumidity
+  }
+
+  const isENS160Working = () => {
+    // Check if we have valid CO2 data
+    const hasCO2 = weatherData?.airQuality?.co2 !== undefined &&
+                   weatherData?.airQuality?.co2 !== null &&
+                   weatherData.airQuality.co2 !== 0 && 
+                   !isNaN(weatherData.airQuality.co2) &&
+                   weatherData.airQuality.co2 > 0 &&
+                   weatherData.airQuality.co2 < 10000
+    
+    console.log('ENS160 Status Check:', { 
+      connectionStatus,
+      airQuality: weatherData?.airQuality,
+      co2: weatherData?.airQuality?.co2, 
+      hasCO2,
+      finalStatus: hasCO2
+    })
+    
+    return hasCO2
+  }
+
+  // Additional sensor status functions
+  const isMPU6050Working = () => {
+    // Check if we have valid accelerometer/gyroscope data (assuming these would be in systemData)
+    const hasAccel = systemData?.accelerometer || systemData?.accel || 
+                    (systemData?.ax !== undefined && systemData?.ay !== undefined && systemData?.az !== undefined)
+    const hasGyro = systemData?.gyroscope || systemData?.gyro ||
+                   (systemData?.gx !== undefined && systemData?.gy !== undefined && systemData?.gz !== undefined)
+    
+    console.log('MPU6050 Status Check:', { systemData, hasAccel, hasGyro })
+    return !!(hasAccel || hasGyro)
+  }
+
+  const isBME280Working = () => {
+    // Check if we have valid pressure data
+    const hasPressure = weatherData?.pressure?.hPa !== undefined &&
+                       weatherData?.pressure?.hPa !== null &&
+                       weatherData.pressure.hPa !== 0 &&
+                       !isNaN(weatherData.pressure.hPa) &&
+                       weatherData.pressure.hPa > 800 &&
+                       weatherData.pressure.hPa < 1200
+    
+    console.log('BME280 Status Check:', { pressure: weatherData?.pressure?.hPa, hasPressure })
+    return hasPressure
+  }
+
+  const isUVSensorWorking = () => {
+    // Check if we have valid UV index data
+    const hasUV = weatherData?.uvIndex?.value !== undefined &&
+                  weatherData?.uvIndex?.value !== null &&
+                  weatherData.uvIndex.value !== 0 &&
+                  !isNaN(weatherData.uvIndex.value) &&
+                  weatherData.uvIndex.value >= 0 &&
+                  weatherData.uvIndex.value <= 15
+    
+    console.log('UV Sensor Status Check:', { uv: weatherData?.uvIndex?.value, hasUV })
+    return hasUV
+  }
+
+  const isBH1750Working = () => {
+    // Check if we have valid light data
+    const hasLight = weatherData?.light?.lux !== undefined &&
+                    weatherData?.light?.lux !== null &&
+                    weatherData.light.lux !== 0 &&
+                    !isNaN(weatherData.light.lux) &&
+                    weatherData.light.lux >= 0
+    
+    console.log('BH1750 Status Check:', { light: weatherData?.light?.lux, hasLight })
+    return hasLight
+  }
+
+  const isVL53L0XWorking = () => {
+    // Check if we have valid distance sensor data
+    const hasDistance = systemData?.distance || systemData?.distances ||
+                       (systemData?.dist1 !== undefined || systemData?.dist2 !== undefined ||
+                        systemData?.dist3 !== undefined || systemData?.dist4 !== undefined)
+    
+    console.log('VL53L0X Status Check:', { systemData, hasDistance })
+    return !!hasDistance
+  }
+
+  const isGPSWorking = () => {
+    // Check if we have valid GPS coordinates
+    const hasGPS = weatherData?.location?.latitude !== undefined &&
+                   weatherData?.location?.longitude !== undefined &&
+                   weatherData.location.latitude !== 0 &&
+                   weatherData.location.longitude !== 0 &&
+                   !isNaN(weatherData.location.latitude) &&
+                   !isNaN(weatherData.location.longitude) &&
+                   Math.abs(weatherData.location.latitude) <= 90 &&
+                   Math.abs(weatherData.location.longitude) <= 180
+    
+    console.log('GPS Status Check:', { 
+      lat: weatherData?.location?.latitude, 
+      lon: weatherData?.location?.longitude, 
+      satellites: weatherData?.satellites,
+      hasGPS 
+    })
+    return hasGPS
+  }
   return (
     <div className="space-y-6">
       {/* System Header */}
@@ -80,7 +211,7 @@ export default function SystemTab({ currentDateTime, systemData, weatherData, co
             </div>
             <div className="flex justify-between items-center py-2 border-b border-gray-200">
               <span className="text-gray-600">Update Interval:</span>
-              <span className="font-semibold text-gray-900">~10 seconds</span>
+              <span className="font-semibold text-gray-900">~1 seconds</span>
             </div>
             <div className="flex justify-between items-center py-2 border-b border-gray-200">
               <span className="text-gray-600">ESP32 Status:</span>
@@ -238,44 +369,130 @@ export default function SystemTab({ currentDateTime, systemData, weatherData, co
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="flex justify-between items-center py-2 border-b border-gray-200">
               <span className="text-gray-600">MPU6050:</span>
-              <span className="font-semibold text-green-600 flex items-center gap-1">
-                <CheckCircle className="w-4 h-4" /> OK
+              <span className={`font-semibold flex items-center gap-1 ${
+                isMPU6050Working() ? 'text-green-600' : 'text-red-600'
+              }`}>
+                {isMPU6050Working() ? (
+                  <>
+                    <CheckCircle className="w-4 h-4" /> OK
+                  </>
+                ) : (
+                  <>
+                    <AlertCircle className="w-4 h-4" /> NO
+                  </>
+                )}
               </span>
             </div>
             <div className="flex justify-between items-center py-2 border-b border-gray-200">
               <span className="text-gray-600">BME280:</span>
-              <span className="font-semibold text-green-600 flex items-center gap-1">
-                <CheckCircle className="w-4 h-4" /> OK
+              <span className={`font-semibold flex items-center gap-1 ${
+                isBME280Working() ? 'text-green-600' : 'text-red-600'
+              }`}>
+                {isBME280Working() ? (
+                  <>
+                    <CheckCircle className="w-4 h-4" /> OK
+                  </>
+                ) : (
+                  <>
+                    <AlertCircle className="w-4 h-4" /> NO
+                  </>
+                )}
               </span>
             </div>
             <div className="flex justify-between items-center py-2 border-b border-gray-200">
               <span className="text-gray-600">UV Sensor:</span>
-              <span className="font-semibold text-green-600 flex items-center gap-1">
-                <CheckCircle className="w-4 h-4" /> OK
+              <span className={`font-semibold flex items-center gap-1 ${
+                isUVSensorWorking() ? 'text-green-600' : 'text-red-600'
+              }`}>
+                {isUVSensorWorking() ? (
+                  <>
+                    <CheckCircle className="w-4 h-4" /> OK
+                  </>
+                ) : (
+                  <>
+                    <AlertCircle className="w-4 h-4" /> NO
+                  </>
+                )}
               </span>
             </div>
             <div className="flex justify-between items-center py-2 border-b border-gray-200">
-              <span className="text-gray-600">CCS811:</span>
-              <span className="font-semibold text-green-600 flex items-center gap-1">
-                <CheckCircle className="w-4 h-4" /> OK
+              <span className="text-gray-600">BH1750:</span>
+              <span className={`font-semibold flex items-center gap-1 ${
+                isBH1750Working() ? 'text-green-600' : 'text-red-600'
+              }`}>
+                {isBH1750Working() ? (
+                  <>
+                    <CheckCircle className="w-4 h-4" /> OK
+                  </>
+                ) : (
+                  <>
+                    <AlertCircle className="w-4 h-4" /> NO
+                  </>
+                )}
               </span>
             </div>
             <div className="flex justify-between items-center py-2 border-b border-gray-200">
               <span className="text-gray-600">VL53L0X Array:</span>
-              <span className="font-semibold text-green-600 flex items-center gap-1">
-                <CheckCircle className="w-4 h-4" /> All 4 Online
+              <span className={`font-semibold flex items-center gap-1 ${
+                isVL53L0XWorking() ? 'text-green-600' : 'text-red-600'
+              }`}>
+                {isVL53L0XWorking() ? (
+                  <>
+                    <CheckCircle className="w-4 h-4" /> All 4 Online
+                  </>
+                ) : (
+                  <>
+                    <AlertCircle className="w-4 h-4" /> Offline
+                  </>
+                )}
               </span>
             </div>
             <div className="flex justify-between items-center py-2 border-b border-gray-200">
               <span className="text-gray-600">GPS Module:</span>
-              <span className="font-semibold text-green-600 flex items-center gap-1">
-                <CheckCircle className="w-4 h-4" /> Lock Acquired
+              <span className={`font-semibold flex items-center gap-1 ${
+                isGPSWorking() ? 'text-green-600' : 'text-red-600'
+              }`}>
+                {isGPSWorking() ? (
+                  <>
+                    <CheckCircle className="w-4 h-4" /> Lock Acquired
+                  </>
+                ) : (
+                  <>
+                    <AlertCircle className="w-4 h-4" /> No Lock
+                  </>
+                )}
               </span>
             </div>
             <div className="flex justify-between items-center py-2 border-b border-gray-200">
-              <span className="text-gray-600">ESP32 Temp:</span>
-              <span className="font-semibold text-gray-900">
-                {systemData?.esp32Temp?.toFixed(1) || '39.2'}°C
+              <span className="text-gray-600">AHT21:</span>
+              <span className={`font-semibold flex items-center gap-1 ${
+                isAHT21Working() ? 'text-green-600' : 'text-red-600'
+              }`}>
+                {isAHT21Working() ? (
+                  <>
+                    <CheckCircle className="w-4 h-4" /> OK
+                  </>
+                ) : (
+                  <>
+                    <AlertCircle className="w-4 h-4" /> NO
+                  </>
+                )}
+              </span>
+            </div>
+            <div className="flex justify-between items-center py-2 border-b border-gray-200">
+              <span className="text-gray-600">ENS160:</span>
+              <span className={`font-semibold flex items-center gap-1 ${
+                isENS160Working() ? 'text-green-600' : 'text-red-600'
+              }`}>
+                {isENS160Working() ? (
+                  <>
+                    <CheckCircle className="w-4 h-4" /> OK
+                  </>
+                ) : (
+                  <>
+                    <AlertCircle className="w-4 h-4" /> NO
+                  </>
+                )}
               </span>
             </div>
           </div>

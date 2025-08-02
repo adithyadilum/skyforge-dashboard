@@ -63,6 +63,8 @@ ESP32 Sensors → WiFi → Firebase Realtime DB → React Web App → Interactiv
 - **Record Limit Control**: Display last 25, 50, 100, or 200 records
 - **Real-time Chart Updates**: All charts automatically sync with Firebase
 - **GPS Trail Mapping**: Interactive map showing movement history
+- **PDF Report Generation**: Professional PDF reports with jsPDF integration
+- **Data Export**: CSV and PDF export functionality with formatted layouts
 - **Error Handling**: Clear error messages and retry logic
 - **Performance Optimized**: Memoized components and efficient state management
 
@@ -70,8 +72,11 @@ ESP32 Sensors → WiFi → Firebase Realtime DB → React Web App → Interactiv
 
 - **System Monitoring**: Firebase connection status with intelligent timeout
 - **Live GPS Tracking**: Interactive map with real-time position updates
-- **Telemetry Data**: Real-time system metrics
-- **Connection Health**: Database connectivity indicators
+- **Dynamic Sensor Status**: Real-time monitoring of all 8 sensors (MPU6050, BME280, UV Sensor, BH1750, VL53L0X Array, GPS Module, AHT21, ENS160)
+- **Intelligent Status Detection**: Sensors show "OK" when receiving valid data, "NO" when offline or faulty
+- **Connection Health**: Database connectivity indicators with automatic status switching
+- **Telemetry Data**: Real-time system metrics and sensor health monitoring
+- **Power & Signal Monitoring**: Battery voltage, NRF link status, and communication channels
 
 ### 🛠️ ESP32 Integration
 
@@ -107,6 +112,8 @@ ESP32 Sensors → WiFi → Firebase Realtime DB → React Web App → Interactiv
 - [x] Map integration with React-Leaflet
 - [x] Data insights and statistics
 - [x] Export functionality (CSV, PDF)
+- [x] PDF report generation with jsPDF integration
+- [x] Professional PDF formatting with multi-page support
 
 #### Phase 4: Firebase Integration (Completed)
 
@@ -166,12 +173,27 @@ ESP32 Sensors → WiFi → Firebase Realtime DB → React Web App → Interactiv
 - [x] Error handling and retry logic
 - [x] Proper timestamp formatting
 
+#### Phase 9: System Enhancement & Sensor Monitoring (Completed)
+
+- [x] Dynamic sensor status monitoring for all 8 sensors
+- [x] Real-time sensor health detection (OK/NO status)
+- [x] Intelligent data validation for each sensor type
+- [x] AHT21 temperature/humidity sensor integration
+- [x] ENS160 air quality sensor integration
+- [x] MPU6050 accelerometer/gyroscope monitoring
+- [x] BME280 pressure sensor validation
+- [x] UV sensor data verification
+- [x] BH1750 light sensor monitoring
+- [x] VL53L0X distance sensor array status
+- [x] GPS module connectivity verification
+- [x] PDF report generation fixes with proper formatting
+
 ### 🔄 Current Status
 
 - **Development Phase**: Production Ready
-- **Last Updated**: July 31, 2025
+- **Last Updated**: August 2, 2025
 - **Active Branch**: `GoogleLogin`
-- **New Features**: Google Authentication, user profile management
+- **New Features**: Dynamic sensor monitoring, PDF report generation, intelligent sensor status detection
 
 ## 🛠️ Technology Stack
 
@@ -195,12 +217,21 @@ ESP32 Sensors → WiFi → Firebase Realtime DB → React Web App → Interactiv
 - **React-Leaflet** - Interactive maps
 - **Leaflet** - Core mapping library
 - **OpenStreetMap** - Map tile provider
+- **jsPDF** - PDF report generation
 
 ### Hardware
 
 - **ESP32** - Microcontroller
 - **WiFi Module** - Connectivity
-- **Sensors** - Environmental data (simulated)
+- **Sensors** - Environmental data collection:
+  - **AHT21** - Temperature and humidity sensor
+  - **ENS160** - Air quality and CO2 sensor
+  - **MPU6050** - Accelerometer and gyroscope
+  - **BME280** - Pressure sensor
+  - **UV Sensor** - Ultraviolet radiation measurement
+  - **BH1750** - Light intensity sensor
+  - **VL53L0X Array** - Distance measurement sensors (4 units)
+  - **GPS Module** - Location and positioning
 
 ## 📦 Installation & Setup
 
@@ -232,6 +263,7 @@ ESP32 Sensors → WiFi → Firebase Realtime DB → React Web App → Interactiv
    - @types/leaflet (TypeScript support)
    - recharts (data visualization)
    - firebase (database integration)
+   - jspdf (PDF report generation)
 
 3. **Configure environment variables**
    Create a `.env` file in the root directory:
@@ -359,26 +391,28 @@ ESP32 Sensors → WiFi → Firebase Realtime DB → React Web App → Interactiv
 
 ## 🚧 Roadmap
 
-### Phase 9: Production Deployment (In Progress)
+### Phase 10: Production Deployment (In Progress)
 
 - [ ] Production Firebase setup
 - [ ] Environment-specific configurations
 - [ ] Performance monitoring
 - [ ] Error tracking and logging
 
-### Phase 10: Enhanced Features (Planned)
+### Phase 11: Enhanced Features (Planned)
 
-- [ ] Data export functionality (CSV, JSON)
-- [ ] Email/SMS alerts for threshold breaches
-- [ ] Multi-device support
-- [ ] Data backup and archival
+- [ ] Advanced sensor fault detection and diagnostics
+- [ ] Email/SMS alerts for sensor failures and threshold breaches
+- [ ] Multi-device support with device management
+- [ ] Data backup and archival with cloud storage
 - [ ] GPS trail playback and animation
 - [ ] Custom map markers and themes
+- [ ] Historical data comparison and trending analysis
+- [ ] Sensor calibration and configuration interface
 
-### Phase 11: Mobile App (Future)
+### Phase 12: Mobile App (Future)
 
 - [ ] React Native mobile application
-- [ ] Push notifications
+- [ ] Push notifications for sensor alerts
 - [ ] Offline data viewing
 - [ ] Location-based features
 - [ ] Mobile-optimized maps
@@ -389,6 +423,7 @@ ESP32 Sensors → WiFi → Firebase Realtime DB → React Web App → Interactiv
 - Large datasets may cause performance issues in older browsers
 - Firebase connection requires stable internet
 - Map rendering requires modern browser with good WebGL support
+- Sensor status depends on actual hardware connectivity and data validation
 
 ## 🔧 Troubleshooting
 
@@ -408,6 +443,17 @@ ESP32 Sensors → WiFi → Firebase Realtime DB → React Web App → Interactiv
 - Check Google OAuth2 configuration and authorized domains
 - Ensure VITE_FIREBASE_AUTH_DOMAIN is correctly set in .env file
 - Monitor browser console for authentication errors
+
+### Sensor Status Issues
+- Verify sensor connections and wiring
+- Check that sensors are providing valid data ranges
+- Monitor browser console for sensor validation logs
+- Ensure ESP32 is properly configured for all sensors
+
+### PDF Report Issues
+- Ensure jsPDF library is properly installed
+- Check browser compatibility for PDF generation
+- Verify data is available before generating reports
 
 ## 🤝 Contributing
 
@@ -431,8 +477,8 @@ For questions or issues:
 
 ---
 
-**Last Updated**: July 31, 2025  
-**Version**: 3.0.0  
+**Last Updated**: August 2, 2025  
+**Version**: 3.1.0  
 **Status**: Production Ready  
 **Branch**: GoogleLogin  
-**New Features**: Google Authentication, Interactive Leaflet maps, intelligent connection monitoring, GPS trail visualization
+**Latest Features**: Dynamic sensor monitoring system, PDF report generation, intelligent sensor fault detection, enhanced system health monitoring
