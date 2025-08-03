@@ -93,32 +93,8 @@ export default function DebugProfileImage({ photoURL }: DebugProfileImageProps) 
             onLoad={() => console.log('No-referrer img loaded')}
             onError={() => console.log('No-referrer img failed')}
           />
-        <div>
-          <p className="text-xs text-gray-600 mb-1">Modified URL:</p>
-          <img
-            src={photoURL.includes('googleusercontent.com') 
-              ? photoURL.replace(/=s\d+-c/, '=s96-c')
-              : photoURL
-            }
-            alt="Test Modified"
-            className="w-12 h-12 rounded-full border-2 border-purple-300"
-            referrerPolicy="no-referrer"
-            onLoad={() => console.log('Modified URL img loaded')}
-            onError={() => console.log('Modified URL img failed')}
-          />
         </div>
-      </div>
-
-      <div className="mt-3 p-2 bg-blue-50 rounded text-xs">
-        <p><strong>Tips for debugging:</strong></p>
-        <ul className="list-disc list-inside space-y-1 mt-1">
-          <li>Check browser console for detailed error messages</li>
-          <li>Verify the image URL is accessible directly in browser</li>
-          <li>Google images may have CORS restrictions</li>
-          <li>Try removing crossOrigin attribute if present</li>
-        </ul>
       </div>
     </div>
   )
-}
 }

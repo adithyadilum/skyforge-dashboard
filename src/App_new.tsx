@@ -3,13 +3,15 @@ import { Card, CardContent } from "./components/ui/card"
 import LiveTab from "./components/LiveTab"
 import SystemTab from "./components/SystemTab"
 import AnalyticsTab from "./components/AnalyticsTab"
-import { WeatherData } from "./types"
+import { WeatherData } from "./types/index"
 
 function App() {
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState("Live")
   const [currentDateTime, setCurrentDateTime] = useState(new Date())
+  // Connection status for system monitoring
+  const connectionStatus: 'connected' | 'disconnected' | 'connecting' = 'connected'
 
   useEffect(() => {
     // Update date/time every second
@@ -145,8 +147,8 @@ function App() {
 
         {/* Tab Content */}
         {activeTab === "Live" && <LiveTab weatherData={weatherData} />}
-        {activeTab === "System" && <SystemTab currentDateTime={currentDateTime} />}
-        {activeTab === "Analytics" && <AnalyticsTab />}
+        {activeTab === "System" && <SystemTab currentDateTime={currentDateTime} connectionStatus={connectionStatus} />}
+        {activeTab === "Analytics" && <AnalyticsTab weatherData={weatherData} />}
       </div>
     </div>
   )

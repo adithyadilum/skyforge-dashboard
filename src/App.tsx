@@ -5,7 +5,7 @@ import SystemTab from "./components/SystemTab"
 import AnalyticsTab from "./components/AnalyticsTab"
 import LoginPage from "./components/LoginPage"
 import UserProfile from "./components/UserProfile"
-import { WeatherData } from "./types"
+import { WeatherData } from "./types/index"
 import { firebaseService } from "./services/firebaseService"
 import { authService } from "./services/authService"
 

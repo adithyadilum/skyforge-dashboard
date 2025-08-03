@@ -1,6 +1,6 @@
 import { Battery, Cpu, CheckCircle, AlertCircle, Clock, Flame } from "lucide-react"
 import { Card, CardContent } from "./ui/card"
-import { WeatherData } from "../types"
+import { WeatherData } from "../types/index"
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 
@@ -14,7 +14,7 @@ interface SystemTabProps {
 export default function SystemTab({ currentDateTime, systemData, weatherData, connectionStatus }: SystemTabProps) {
   const getDataAge = () => {
     if (!weatherData?.lastUpdate) return 'Unknown'
-    const ageMs = Date.now() - weatherData.lastUpdate
+    const ageMs = currentDateTime.getTime() - weatherData.lastUpdate
     const ageSeconds = Math.floor(ageMs / 1000)
     if (ageSeconds < 60) return `${ageSeconds}s ago`
     const ageMinutes = Math.floor(ageSeconds / 60)
@@ -23,7 +23,7 @@ export default function SystemTab({ currentDateTime, systemData, weatherData, co
 
   const isDataFresh = () => {
     if (!weatherData?.lastUpdate) return false
-    const ageMs = Date.now() - weatherData.lastUpdate
+    const ageMs = currentDateTime.getTime() - weatherData.lastUpdate
     return ageMs <= 15000 // Fresh if less than 15 seconds old
   }
 

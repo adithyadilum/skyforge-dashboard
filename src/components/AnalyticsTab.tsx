@@ -98,12 +98,12 @@ UVChart.displayName = 'UVChart'
 SpeedChart.displayName = 'SpeedChart'
 AltitudeChart.displayName = 'AltitudeChart'
 
-const AnalyticsTab = React.memo(({ weatherData }: AnalyticsTabProps) => {
+const AnalyticsTab = React.memo(({ weatherData: _weatherData }: AnalyticsTabProps) => {
   const [historicalData, setHistoricalData] = useState<WeatherData[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [recordLimit, setRecordLimit] = useState(50) // Add record limit state
   const [autoRefresh, setAutoRefresh] = useState(true) // Auto-refresh toggle
-  const [error, setError] = useState<string | null>(null)
+  const [_error, setError] = useState<string | null>(null) // Error state for future use
   const [refreshInterval, setRefreshInterval] = useState(10) // Refresh interval in seconds
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
 

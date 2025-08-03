@@ -2,7 +2,7 @@ import { useState } from "react"
 import { Sun, Thermometer, Droplets, Gauge, Wind, Satellite, Mountain, ChevronDown } from "lucide-react"
 import { Card, CardContent } from "./ui/card"
 import UvGauge from "./ui/UvGauge"
-import { WeatherData } from "../types"
+import { WeatherData } from "../types/index"
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
