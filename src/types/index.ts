@@ -32,6 +32,10 @@ export interface WeatherData {
     direction: number
   }
   satellites: number
+  battery: {
+    voltage: number
+    percentage: number
+  }
   timestamp: string
   condition: string
   isLive?: boolean

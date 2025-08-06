@@ -1,10 +1,7 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent } from "./components/ui/card"
-import LiveTab from "./components/LiveTab"
-import SystemTab from "./components/SystemTab"
-import AnalyticsTab from "./components/AnalyticsTab"
-import LoginPage from "./components/LoginPage"
-import UserProfile from "./components/UserProfile"
+import { LiveTab, SystemTab, AnalyticsTab } from "./components/tabs"
+import { LoginPage, UserProfile } from "./components/auth"
 import { WeatherData } from "./types/index"
 import { firebaseService } from "./services/firebaseService"
 import { authService } from "./services/authService"
@@ -13,7 +10,6 @@ function App() {
   const [user, setUser] = useState<any>(null)
   const [authLoading, setAuthLoading] = useState(true)
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null)
-  const [systemData, setSystemData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState("Live")
   const [currentDateTime, setCurrentDateTime] = useState(new Date())
@@ -43,7 +39,6 @@ function App() {
     // Only initialize Firebase data subscription when user is authenticated
     if (!user) {
       setWeatherData(null)
-      setSystemData(null)
       setLoading(false)
       return
     }
@@ -71,14 +66,6 @@ function App() {
       setLoading(false)
     })
 
-    // Subscribe to system data
-    const systemUnsubscribe = firebaseService.subscribeToSystemData((data) => {
-      if (data) {
-        console.log("Received Firebase system data:", data)
-        setSystemData(data)
-      }
-    })
-
     // Set loading to false after timeout
     const initialLoadTimeout = setTimeout(() => {
       setLoading(false)
@@ -88,7 +75,6 @@ function App() {
     return () => {
       clearTimeout(initialLoadTimeout)
       weatherUnsubscribe()
-      systemUnsubscribe()
       firebaseService.cleanup()
     }
   }, [user])
@@ -100,7 +86,6 @@ function App() {
   const handleSignOut = () => {
     setUser(null)
     setWeatherData(null)
-    setSystemData(null)
     setConnectionStatus('connecting')
     setActiveTab('Live')
   }
@@ -245,7 +230,6 @@ function App() {
         {activeTab === "System" && (
           <SystemTab
             currentDateTime={currentDateTime}
-            systemData={systemData}
             weatherData={weatherData}
             connectionStatus={connectionStatus}
           />

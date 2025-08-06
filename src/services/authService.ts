@@ -1,4 +1,4 @@
-import { auth, googleProvider } from '../lib/firebase'
+import { auth, googleProvider } from '../config/firebase'
 import { signInWithPopup, signOut, onAuthStateChanged, User } from 'firebase/auth'
 
 export class AuthService {

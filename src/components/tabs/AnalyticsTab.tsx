@@ -1,11 +1,11 @@
 import React, { useMemo, useCallback, useEffect, useState, useRef } from "react"
 import { Sun, Thermometer, Droplets, Gauge, Wind, BarChart3, TrendingUp, Download, FileText, RefreshCw, ChevronDown, Mountain } from "lucide-react"
-import { Card, CardContent } from "./ui/card"
+import { Card, CardContent } from "../ui/card"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts'
-import { WeatherData } from '../types'
+import { WeatherData } from '../../types'
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
-import { firebaseService } from '../services/firebaseService'
+import { firebaseService } from '../../services/firebaseService'
 import jsPDF from 'jspdf'
 
 interface AnalyticsTabProps {
@@ -101,32 +101,33 @@ AltitudeChart.displayName = 'AltitudeChart'
 const AnalyticsTab = React.memo(({ weatherData: _weatherData }: AnalyticsTabProps) => {
   const [historicalData, setHistoricalData] = useState<WeatherData[]>([])
   const [isLoading, setIsLoading] = useState(false)
-  const [recordLimit, setRecordLimit] = useState(50) // Add record limit state
+  const [timeRange, setTimeRange] = useState<'hour' | 'day' | 'week' | 'month'>('day') // Time range selector
   const [autoRefresh, setAutoRefresh] = useState(true) // Auto-refresh toggle
   const [_error, setError] = useState<string | null>(null) // Error state for future use
-  const [refreshInterval, setRefreshInterval] = useState(10) // Refresh interval in seconds
+  const [refreshInterval, setRefreshInterval] = useState(30) // Refresh interval in seconds
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Fetch historical data function
-  const fetchHistoricalData = useCallback(async (limit: number = recordLimit) => {
+  // Fetch analytics data function
+  const fetchAnalyticsData = useCallback(async (range: 'hour' | 'day' | 'week' | 'month' = timeRange) => {
     setIsLoading(true)
     setError(null) // Clear previous errors
     try {
-      const data = await firebaseService.getHistoricalData(limit)
+      console.log(`📊 Fetching analytics data for ${range}...`)
+      const data = await firebaseService.getAnalyticsData(range)
       setHistoricalData(data)
-      console.log('📊 Historical data loaded for analytics:', data.length, 'records')
+      console.log(`📊 Analytics data loaded for ${range}:`, data.length, 'records')
     } catch (error) {
-      console.error('❌ Error fetching historical data:', error)
+      console.error('❌ Error fetching analytics data:', error)
       setError(error instanceof Error ? error.message : 'Failed to fetch data')
     } finally {
       setIsLoading(false)
     }
-  }, [recordLimit])
+  }, [timeRange])
 
-  // Fetch historical data on component mount and set up auto-refresh
+  // Fetch analytics data on component mount and set up auto-refresh
   useEffect(() => {
     // Initial data fetch
-    fetchHistoricalData()
+    fetchAnalyticsData()
 
     // Clear any existing interval
     if (intervalRef.current) {
@@ -137,7 +138,7 @@ const AnalyticsTab = React.memo(({ weatherData: _weatherData }: AnalyticsTabProp
     // Set up auto-refresh interval if enabled
     if (autoRefresh) {
       intervalRef.current = setInterval(() => {
-        fetchHistoricalData()
+        fetchAnalyticsData()
       }, refreshInterval * 1000) // Convert seconds to milliseconds
     }
 
@@ -147,18 +148,21 @@ const AnalyticsTab = React.memo(({ weatherData: _weatherData }: AnalyticsTabProp
         intervalRef.current = null
       }
     }
-  }, [fetchHistoricalData, autoRefresh, refreshInterval])
+  }, [fetchAnalyticsData, autoRefresh, refreshInterval])
 
   // Process historical data for charts
   const chartData = useMemo(() => {
+    console.log(`📊 Processing chart data from ${historicalData.length} records for ${timeRange}`)
+    
     if (historicalData.length === 0) {
+      console.log('⚠️ No historical data available, using fallback sample data')
       // Fallback to sample data if no historical data
       return {
         temperature: [
           { time: '00:00', value: 18.5 }
         ],
         environmental: [
-          { time: '00:00', temperature: 18.5, humidity: 65, pressure: 1013, uv: 0 }
+          { time: '00:00', temperature: 18.5, humidity: 65, pressure: 1013, uv: 0, co2: 400, light: 100 }
         ],
         flight: [
           { time: '10:00', speed: 0, altitude: 0 }
@@ -166,8 +170,10 @@ const AnalyticsTab = React.memo(({ weatherData: _weatherData }: AnalyticsTabProp
       }
     }
 
+    console.log('✅ Processing real analytics data:', historicalData[0])
+
     // Process real historical data
-    const processedData = historicalData.map((record) => {
+    const processedData = historicalData.map((record, index) => {
       const timestamp = new Date(record.lastUpdate || Date.now())
       const timeString = timestamp.toLocaleTimeString('en-US', {
         hour: '2-digit',
@@ -175,7 +181,7 @@ const AnalyticsTab = React.memo(({ weatherData: _weatherData }: AnalyticsTabProp
         hour12: false
       })
 
-      return {
+      const dataPoint = {
         time: timeString,
         value: record.temperature.celsius,
         temperature: record.temperature.celsius,
@@ -189,14 +195,22 @@ const AnalyticsTab = React.memo(({ weatherData: _weatherData }: AnalyticsTabProp
         latitude: record.location.latitude,
         longitude: record.location.longitude
       }
+
+      if (index === 0) {
+        console.log('📈 Sample processed data point:', dataPoint)
+      }
+
+      return dataPoint
     })
+
+    console.log(`📊 Chart data ready: ${processedData.length} points for ${timeRange} range`)
 
     return {
       temperature: processedData,
       environmental: processedData,
       flight: processedData
     }
-  }, [historicalData])  // Memoize static data to prevent re-creation on every render
+  }, [historicalData, timeRange])  // Include timeRange in dependencies
   const temperatureData = useMemo(() => {
     return chartData.temperature
   }, [chartData])
@@ -269,15 +283,15 @@ const AnalyticsTab = React.memo(({ weatherData: _weatherData }: AnalyticsTabProp
     }
   }, [historicalData])
 
-  // Refresh historical data
+  // Refresh analytics data
   const refreshData = useCallback(async () => {
-    await fetchHistoricalData(recordLimit)
-  }, [fetchHistoricalData, recordLimit])
+    await fetchAnalyticsData()
+  }, [fetchAnalyticsData])
 
-  // Handle record limit change
-  const handleLimitChange = (newLimit: number) => {
-    setRecordLimit(newLimit)
-    fetchHistoricalData(newLimit)
+  // Handle time range change
+  const handleTimeRangeChange = (newRange: 'hour' | 'day' | 'week' | 'month') => {
+    setTimeRange(newRange)
+    fetchAnalyticsData(newRange)
   }
 
   // Export CSV function
@@ -404,19 +418,19 @@ const AnalyticsTab = React.memo(({ weatherData: _weatherData }: AnalyticsTabProp
             </h2>
             {/* Time Range Selector and Controls */}
             <div className="flex items-center gap-4">
-             {/* <div className="flex items-center gap-2 text-sm text-gray-600">
+              <div className="flex items-center gap-2 text-sm text-gray-600">
                 <span>Records: {historicalData.length}</span>
-              </div> */}
+              </div>
               <div className="relative">
                 <select
-                  value={recordLimit}
-                  onChange={(e) => handleLimitChange(Number(e.target.value))}
+                  value={timeRange}
+                  onChange={(e) => handleTimeRangeChange(e.target.value as 'hour' | 'day' | 'week' | 'month')}
                   className="appearance-none bg-white border border-gray-300 rounded-md px-4 py-2 pr-8 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
                 >
-                  <option value={25}>Last 25 records</option>
-                  <option value={50}>Last 50 records</option>
-                  <option value={100}>Last 100 records</option>
-                  <option value={200}>Last 200 records</option>
+                  <option value="hour">Last Hour</option>
+                  <option value="day">Last Day</option>
+                  <option value="week">Last Week</option>
+                  <option value="month">Last Month</option>
                 </select>
                 <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
               </div>
@@ -437,11 +451,11 @@ const AnalyticsTab = React.memo(({ weatherData: _weatherData }: AnalyticsTabProp
                     onChange={(e) => setRefreshInterval(Number(e.target.value))}
                     className="appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 pr-8 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
                   >
-                    <option value={5}>5s</option>
-                    <option value={10}>10s</option>
-                    <option value={15}>15s</option>
                     <option value={30}>30s</option>
                     <option value={60}>1m</option>
+                    <option value={300}>5m</option>
+                    <option value={600}>10m</option>
+                    <option value={1800}>30m</option>
                   </select>
                   <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-3 h-3 text-gray-500 pointer-events-none" />
                 </div>

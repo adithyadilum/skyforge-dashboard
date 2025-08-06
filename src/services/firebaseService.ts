@@ -1,4 +1,4 @@
-import { db, hasFirebaseConfig } from '../lib/firebase'
+import { db, hasFirebaseConfig } from '../config/firebase'
 import { ref, onValue, query, orderByKey, limitToLast } from 'firebase/database'
 import { WeatherData } from '../types'
 
@@ -105,16 +105,16 @@ export class FirebaseService {
       return () => { } // Return empty unsubscribe function
     }
 
-    console.log('Setting up real-time listener for sensor_data...')
+    console.log('Setting up real-time listener for telemetry...')
     this.currentStatus = 'connecting'
     if (this.connectionStatusCallback) {
       this.connectionStatusCallback('connecting')
       console.log('📞 Called status callback: connecting')
     }
 
-    // Listen to the latest record in sensor_data
-    const sensorDataRef = ref(db, 'sensor_data')
-    const latestDataQuery = query(sensorDataRef, orderByKey(), limitToLast(1))
+    // Listen to the latest record in telemetry
+    const telemetryRef = ref(db, 'telemetry')
+    const latestDataQuery = query(telemetryRef, orderByKey(), limitToLast(1))
 
     // Start status monitoring ONCE - not on every data update
     this.startStatusMonitoring()
@@ -189,26 +189,30 @@ export class FirebaseService {
               level: this.getUVLevel(latestRecord.uvIndex || 0),
             },
             airQuality: {
-              co2: latestRecord.co2 || 0,
-              gas: latestRecord.gas || 0,
-              quality: latestRecord.airQuality || 0,
+              co2: latestRecord.eCO2 || 0,
+              gas: latestRecord.TVOC || 0,
+              quality: latestRecord.status || 0,
             },
             light: {
-              lux: latestRecord.lightIntensity || 0,
-              ppm: latestRecord.lightIntensity || 0,
+              lux: latestRecord.lux || 0,
+              ppm: latestRecord.lux || 0,
             },
             location: {
-              latitude: latestRecord.latitude || 0,
-              longitude: latestRecord.longitude || 0,
+              latitude: latestRecord.gps_latitude || 0,
+              longitude: latestRecord.gps_longitude || 0,
               altitude: latestRecord.altitude || 0,
             },
             wind: {
               speed: 0, // Not available in your data structure
               direction: 0, // Not available in your data structure
             },
-            satellites: latestRecord.satellites || 0,
+            satellites: latestRecord.gps_satellites || latestRecord.satellites || latestRecord.sat_count || 0,
+            battery: {
+              voltage: latestRecord.battery_voltage || latestRecord.batteryVoltage || 0,
+              percentage: this.calculateBatteryPercentage(latestRecord.battery_voltage || latestRecord.batteryVoltage || 0),
+            },
             timestamp: new Date(recordTimestamp).toLocaleTimeString(),
-            condition: this.getWeatherCondition(latestRecord.lightIntensity || 0),
+            condition: this.getWeatherCondition(latestRecord.lux || 0),
             isLive: isLive,
             lastUpdate: recordTimestamp
           }
@@ -217,6 +221,9 @@ export class FirebaseService {
             temperature: weatherData.temperature.celsius,
             humidity: weatherData.humidity,
             pressure: weatherData.pressure.hPa,
+            lux: weatherData.light.lux,
+            co2: weatherData.airQuality.co2,
+            tvoc: weatherData.airQuality.gas,
             timestamp: weatherData.timestamp,
             isLive: isLive,
             recordKey: latestKey
@@ -343,6 +350,16 @@ export class FirebaseService {
     return "Dark/Night"
   }
 
+  // Helper function to calculate battery percentage from voltage
+  private calculateBatteryPercentage(voltage: number): number {
+    if (voltage <= 0) return 0
+    // Assuming 3.7V Li-ion battery: 3.2V (0%) to 4.2V (100%)
+    const minVoltage = 3.2
+    const maxVoltage = 4.2
+    const percentage = Math.min(100, Math.max(0, ((voltage - minVoltage) / (maxVoltage - minVoltage)) * 100))
+    return Math.round(percentage)
+  }
+
   // Test real-time connection
   testConnection(): Promise<boolean> {
     return new Promise((resolve) => {
@@ -385,7 +402,7 @@ export class FirebaseService {
     return this.connectionStatusCallback !== null
   }
 
-  // Get historical sensor data for analytics
+  // Get historical sensor data for analytics from the 'telemetry' node
   async getHistoricalData(limit: number = 50): Promise<WeatherData[]> {
     if (!hasFirebaseConfig || !db) {
       console.log('Firebase not configured, returning empty historical data')
@@ -393,9 +410,9 @@ export class FirebaseService {
     }
 
     try {
-      console.log(`📈 Fetching last ${limit} historical records...`)
-      const sensorDataRef = ref(db, 'sensor_data')
-      const historicalQuery = query(sensorDataRef, orderByKey(), limitToLast(limit))
+      console.log(`📈 Fetching last ${limit} historical records from 'telemetry' node...`)
+      const telemetryRef = ref(db, 'telemetry')
+      const historicalQuery = query(telemetryRef, orderByKey(), limitToLast(limit))
 
       return new Promise((resolve, reject) => {
         const unsubscribe = onValue(historicalQuery, (snapshot) => {
@@ -411,11 +428,23 @@ export class FirebaseService {
             Object.entries(data).forEach(([key, record]: [string, any]) => {
               console.log(`🔍 Processing record ${key}:`, record)
 
-              if (record && record.timestamp) {
-                const recordTimestamp = record.timestamp * 1000 // Convert to milliseconds
+              if (record) {
+                // Use the key as timestamp if it's a number, otherwise look for timestamp field
+                let recordTimestamp: number
+                if (!isNaN(Number(key))) {
+                  // Key is a timestamp (like 1754380067)
+                  recordTimestamp = Number(key) * 1000 // Convert to milliseconds
+                } else if (record.timestamp) {
+                  // Traditional timestamp field
+                  recordTimestamp = record.timestamp * 1000
+                } else {
+                  // Fallback to current time
+                  recordTimestamp = Date.now()
+                }
+                
                 const isLive = this.isDataLive(recordTimestamp)
 
-                console.log(`📅 Record timestamp: ${record.timestamp}, converted: ${recordTimestamp}, isLive: ${isLive}`)
+                console.log(`📅 Record key: ${key}, timestamp: ${recordTimestamp}, isLive: ${isLive}`)
 
                 const weatherData: WeatherData = {
                   temperature: {
@@ -433,26 +462,30 @@ export class FirebaseService {
                     level: this.getUVLevel(record.uvIndex || 0),
                   },
                   airQuality: {
-                    co2: record.co2 || 0,
-                    gas: record.gas || 0,
-                    quality: record.airQuality || 0,
+                    co2: record.eCO2 || 0,
+                    gas: record.TVOC || 0,
+                    quality: record.status || 0,
                   },
                   light: {
-                    lux: record.lightIntensity || 0,
-                    ppm: record.lightIntensity || 0,
+                    lux: record.lux || 0,
+                    ppm: record.lux || 0,
                   },
                   location: {
-                    latitude: record.latitude || 0,
-                    longitude: record.longitude || 0,
+                    latitude: record.gps_latitude || 0,
+                    longitude: record.gps_longitude || 0,
                     altitude: record.altitude || 0,
                   },
                   wind: {
                     speed: 0, // Calculate from GPS if available
                     direction: 0,
                   },
-                  satellites: record.satellites || 0,
+                  satellites: record.gps_satellites || record.satellites || record.sat_count || 0,
+                  battery: {
+                    voltage: record.battery_voltage || record.batteryVoltage || 0,
+                    percentage: this.calculateBatteryPercentage(record.battery_voltage || record.batteryVoltage || 0),
+                  },
                   timestamp: new Date(recordTimestamp).toLocaleTimeString(),
-                  condition: this.getWeatherCondition(record.lightIntensity || 0),
+                  condition: this.getWeatherCondition(record.lux || 0),
                   isLive: isLive,
                   lastUpdate: recordTimestamp,
                   recordId: key
@@ -491,6 +524,160 @@ export class FirebaseService {
       })
     } catch (error) {
       console.error('🚨 Error fetching historical data:', error)
+      return []
+    }
+  }
+
+  // Get historical data for specific time ranges (for Analytics tab)
+  async getAnalyticsData(timeRange: 'hour' | 'day' | 'week' | 'month' = 'day'): Promise<WeatherData[]> {
+    if (!hasFirebaseConfig || !db) {
+      console.log('Firebase not configured, returning empty analytics data')
+      return []
+    }
+
+    try {
+      // Calculate time range limits
+      const now = Date.now()
+      let startTime: number
+      let limit: number
+
+      switch (timeRange) {
+        case 'hour':
+          startTime = now - (60 * 60 * 1000) // 1 hour ago
+          limit = 60 // ~1 record per minute
+          break
+        case 'day':
+          startTime = now - (24 * 60 * 60 * 1000) // 24 hours ago  
+          limit = 144 // ~1 record per 10 minutes
+          break
+        case 'week':
+          startTime = now - (7 * 24 * 60 * 60 * 1000) // 7 days ago
+          limit = 168 // ~1 record per hour
+          break
+        case 'month':
+          startTime = now - (30 * 24 * 60 * 60 * 1000) // 30 days ago
+          limit = 720 // ~1 record per hour
+          break
+        default:
+          startTime = now - (24 * 60 * 60 * 1000)
+          limit = 144
+      }
+
+      console.log(`📊 Fetching analytics data for ${timeRange} (${limit} records max)`)
+      console.log(`🕐 Time range: ${new Date(startTime).toLocaleString()} to ${new Date(now).toLocaleString()}`)
+
+      const telemetryRef = ref(db, 'telemetry')
+      const analyticsQuery = query(telemetryRef, orderByKey(), limitToLast(limit))
+
+      return new Promise((resolve, reject) => {
+        const unsubscribe = onValue(analyticsQuery, (snapshot) => {
+          const data = snapshot.val()
+          unsubscribe()
+
+          console.log(`🔍 Raw analytics data from telemetry node (${timeRange}):`, data)
+
+          if (data) {
+            const analyticsData: WeatherData[] = []
+
+            Object.entries(data).forEach(([key, record]: [string, any]) => {
+              if (record) {
+                // Use the key as timestamp if it's a number, otherwise look for timestamp field
+                let recordTimestamp: number
+                if (!isNaN(Number(key))) {
+                  // Key is a timestamp (like 1754380067)
+                  recordTimestamp = Number(key) * 1000 // Convert to milliseconds
+                } else if (record.timestamp || record.time || record.date) {
+                  let timestampValue = record.timestamp || record.time || record.date || record.created_at
+                  
+                  if (typeof timestampValue === 'string') {
+                    recordTimestamp = new Date(timestampValue).getTime()
+                  } else if (timestampValue > 1e12) {
+                    recordTimestamp = timestampValue
+                  } else if (timestampValue > 1e9) {
+                    recordTimestamp = timestampValue * 1000
+                  } else {
+                    recordTimestamp = Date.now()
+                  }
+                } else {
+                  recordTimestamp = Date.now()
+                }
+
+                // Filter by time range
+                if (recordTimestamp >= startTime) {
+                  const isLive = this.isDataLive(recordTimestamp)
+                  
+                  // Transform data with field patterns for your database structure
+                  const weatherData: WeatherData = {
+                    temperature: {
+                      celsius: record.temperature || 0,
+                      fahrenheit: record.temperature ? (record.temperature * 9 / 5) + 32 : 0,
+                      feelsLike: record.temperature ? record.temperature - 2 : 0,
+                    },
+                    humidity: record.humidity || 0,
+                    pressure: {
+                      hPa: record.pressure || 1013,
+                      altitude: record.altitude || 0,
+                    },
+                    uvIndex: {
+                      value: record.uvIndex || 0,
+                      level: this.getUVLevel(record.uvIndex || 0),
+                    },
+                    airQuality: {
+                      co2: record.eCO2 || 0,
+                      gas: record.TVOC || 0,
+                      quality: record.status || 0,
+                    },
+                    light: {
+                      lux: record.lux || 0,
+                      ppm: record.lux || 0,
+                    },
+                    location: {
+                      latitude: record.gps_latitude || 0,
+                      longitude: record.gps_longitude || 0,
+                      altitude: record.altitude || 0,
+                    },
+                    wind: {
+                      speed: 0,
+                      direction: 0,
+                    },
+                    satellites: record.gps_satellites || record.satellites || record.sat_count || 0,
+                    battery: {
+                      voltage: record.battery_voltage || record.batteryVoltage || 0,
+                      percentage: this.calculateBatteryPercentage(record.battery_voltage || record.batteryVoltage || 0),
+                    },
+                    timestamp: new Date(recordTimestamp).toLocaleTimeString(),
+                    condition: this.getWeatherCondition(record.lux || 0),
+                    isLive: isLive,
+                    lastUpdate: recordTimestamp,
+                    recordId: key
+                  }
+                  
+                  analyticsData.push(weatherData)
+                }
+              }
+            })
+
+            // Sort by timestamp (oldest first for charts)
+            analyticsData.sort((a, b) => (a.lastUpdate || 0) - (b.lastUpdate || 0))
+
+            console.log(`📈 Analytics data ready: ${analyticsData.length} records for ${timeRange}`)
+            console.log(`📊 Time span: ${analyticsData.length > 0 ? 
+              `${new Date(analyticsData[0].lastUpdate || 0).toLocaleString()} to ${new Date(analyticsData[analyticsData.length - 1].lastUpdate || 0).toLocaleString()}` : 
+              'No data'}`
+            )
+            
+            resolve(analyticsData)
+          } else {
+            console.log(`❌ No analytics data available in telemetry node for ${timeRange}`)
+            resolve([])
+          }
+        }, (error) => {
+          console.error(`🚨 Analytics data fetch error from telemetry node (${timeRange}):`, error)
+          reject(error)
+        })
+      })
+    } catch (error) {
+      console.error(`🚨 Error fetching analytics data from telemetry node (${timeRange}):`, error)
       return []
     }
   }
