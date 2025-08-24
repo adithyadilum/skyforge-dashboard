@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>SkyForge Debug Page</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 24px; }
+    code { background: #f5f5f5; padding: 2px 4px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <h1>🔍 SkyForge Debug Page</h1>
+  <p>If you can see this, the dev server is serving static files correctly on this port.</p>
+  <p id="js-status">Checking JavaScript...</p>
+  <p><strong>Build Port Check:</strong> You should be on <code>http://localhost:5175/debug.html</code>. If you're on 5173 or 5174, switch to 5175.</p>
+  <p><strong>Next:</strong> Open <code>/src/main.tsx</code> directly: <a href="/src/main.tsx" target="_blank">/src/main.tsx</a>. You should see transformed Vite module code. If that 404s, you're on the wrong port.</p>
+  <p><strong>Fallback Test:</strong> Open <a href="/">Root (index.html)</a> and confirm you at least see the "Loading SkyForge Dashboard..." fallback BEFORE React mounts.</p>
+  <hr />
+  <pre id="env"></pre>
+
+  <script>
+    document.getElementById('js-status').textContent = '✅ JavaScript executed (inline script ran).';
+    window.__DEBUG_BOOT = Date.now();
+    document.getElementById('env').textContent = 'Navigator UA: ' + navigator.userAgent + '\nTime: ' + new Date().toLocaleString();
+  </script>
+</body>
+</html>

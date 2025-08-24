@@ -1,0 +1,30 @@
+{
+  "name": "SKYFORGE Dashboard",
+  "short_name": "SKYFORGE",
+  "description": "Real-time drone monitoring and GPS navigation dashboard",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "32x32",
+      "type": "image/svg+xml",
+      "purpose": "favicon"
+    },
+    {
+      "src": "/drone-icon.svg",
+      "sizes": "100x100",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/apple-touch-icon.svg",
+      "sizes": "180x180",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#f8fafc",
+  "background_color": "#1e293b",
+  "orientation": "landscape-primary"
+}

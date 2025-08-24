@@ -1,10 +1,12 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Card, CardContent } from "./components/ui/card"
 import { LiveTab, SystemTab, AnalyticsTab } from "./components/tabs"
 import { LoginPage, UserProfile } from "./components/auth"
 import { WeatherData } from "./types/index"
 import { firebaseService } from "./services/firebaseService"
-import { authService } from "./services/authService"
+import { authService } from "./services/auth.service"
+import { useGPSTracking } from "./hooks/useGPSTracking"
+import ShinyText from "./components/ui/ShinyText"
 
 function App() {
   const [user, setUser] = useState<any>(null)
@@ -15,12 +17,25 @@ function App() {
   const [currentDateTime, setCurrentDateTime] = useState(new Date())
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'connecting'>('connecting')
 
+  // Uptime timer state - proper session management
+  const [uptimeSeconds, setUptimeSeconds] = useState(0)
+  const [isTimerRunning, setIsTimerRunning] = useState(false)
+  const uptimeIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const lastDataReceivedRef = useRef<number>(0)
+  const sessionStartTimeRef = useRef<number>(0)
+
+  // Initialize GPS tracking
+  const gpsTracking = useGPSTracking({
+    maxHistorySize: 200,
+    minTimeInterval: 5, // 5 seconds minimum between calculations
+    minDistance: 2 // 2 meters minimum for valid movement
+  })
+
   // Auth state monitoring
   useEffect(() => {
     const unsubscribe = authService.onAuthStateChange((user) => {
       setUser(user)
       setAuthLoading(false)
-      console.log('Auth state changed:', user ? `Signed in as ${user.displayName}` : 'Signed out')
     })
 
     return unsubscribe
@@ -35,6 +50,51 @@ function App() {
     return () => clearInterval(timer)
   }, [])
 
+  // Uptime timer logic - based on connection status changes
+  useEffect(() => {
+    if (connectionStatus === 'connected' && !isTimerRunning) {
+      // Start timer only when going from not-running to connected
+      console.log('🚀 Data session started - starting uptime timer')
+      setIsTimerRunning(true)
+      setUptimeSeconds(0) // Reset to 0 for new session
+      sessionStartTimeRef.current = Date.now()
+      
+      // Clear any existing timer
+      if (uptimeIntervalRef.current) {
+        clearInterval(uptimeIntervalRef.current)
+      }
+      
+      // Start new timer
+      uptimeIntervalRef.current = setInterval(() => {
+        setUptimeSeconds(prev => prev + 1)
+      }, 1000)
+      
+    } else if (connectionStatus === 'disconnected' && isTimerRunning) {
+      // Pause timer only when going from running to disconnected
+      console.log('⏸️ Data session paused - stopping timer at', uptimeSeconds + 's')
+      setIsTimerRunning(false)
+      if (uptimeIntervalRef.current) {
+        clearInterval(uptimeIntervalRef.current)
+        uptimeIntervalRef.current = null
+      }
+    }
+    // 'connecting' state: do nothing, keep current state
+  }, [connectionStatus, isTimerRunning, uptimeSeconds])
+
+  // Cleanup effect
+  useEffect(() => {
+    return () => {
+      if (uptimeIntervalRef.current) {
+        clearInterval(uptimeIntervalRef.current)
+      }
+    }
+  }, [])
+
+  // Debug effect
+  useEffect(() => {
+    console.log(`🔍 Uptime: ${uptimeSeconds}s, Timer running: ${isTimerRunning}, Status: ${connectionStatus}`)
+  }, [uptimeSeconds, isTimerRunning, connectionStatus])
+
   useEffect(() => {
     // Only initialize Firebase data subscription when user is authenticated
     if (!user) {
@@ -43,25 +103,30 @@ function App() {
       return
     }
 
-    console.log("Initializing dashboard for authenticated user...")
     setLoading(true)
     setConnectionStatus('connecting')
 
     // Set up connection status monitoring
     firebaseService.setConnectionStatusCallback((status) => {
       setConnectionStatus(status)
-      console.log(`📡 Connection status changed to: ${status}`)
     })
 
     // Subscribe to real-time Firebase data
-    console.log("Connecting to Firebase...")
     const weatherUnsubscribe = firebaseService.subscribeToWeatherData((data) => {
       if (data) {
-        console.log("Received Firebase weather data:", data)
         setWeatherData(data)
+        // Update GPS tracking with new data
+        gpsTracking.updateGPSTracking(data)
+        
+        // Track last data received time
+        lastDataReceivedRef.current = Date.now()
+        
+        // Connection status will handle timer logic
+        // Just log that we received data
+        console.log('📡 Data received')
       } else {
-        console.log("No Firebase weather data available")
         setWeatherData(null)
+        console.log('❌ No data received')
       }
       setLoading(false)
     })
@@ -76,11 +141,16 @@ function App() {
       clearTimeout(initialLoadTimeout)
       weatherUnsubscribe()
       firebaseService.cleanup()
+      // Clean up uptime timer
+      if (uptimeIntervalRef.current) {
+        clearInterval(uptimeIntervalRef.current)
+        uptimeIntervalRef.current = null
+      }
     }
   }, [user])
 
   const handleLoginSuccess = () => {
-    console.log('Login successful, starting data subscription...')
+    // Login successful, start data subscription
   }
 
   const handleSignOut = () => {
@@ -88,6 +158,17 @@ function App() {
     setWeatherData(null)
     setConnectionStatus('connecting')
     setActiveTab('Live')
+    // Reset GPS tracking
+    gpsTracking.resetTracking()
+    // Reset uptime timer
+    if (uptimeIntervalRef.current) {
+      clearInterval(uptimeIntervalRef.current)
+      uptimeIntervalRef.current = null
+    }
+    setUptimeSeconds(0)
+    setIsTimerRunning(false)
+    lastDataReceivedRef.current = 0
+    sessionStartTimeRef.current = 0
   }
 
   // Show loading screen while checking auth state
@@ -134,6 +215,7 @@ function App() {
               ? 'Database not receiving data. Check your sensors and Firebase connection.'
               : 'Waiting for sensor data...'}
           </div>
+          
           <div className="mt-4">
             <UserProfile user={user} onSignOut={handleSignOut} />
           </div>
@@ -150,7 +232,9 @@ function App() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <h1 className="text-2xl font-bold text-gray-900">SkyForge</h1>
+                <h1 className="text-2xl font-bold">
+                  <ShinyText text="SKYFORGE" disabled={false} speed={20} className="" />
+                </h1>
 
                 {/* Connection Status Indicator */}
                 <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium ${connectionStatus === 'connected'
@@ -171,7 +255,14 @@ function App() {
                 {/* Data Freshness Indicator */}
                 {weatherData?.lastUpdate && (
                   <div className="text-xs text-gray-500">
-                    Last Update: {new Date(weatherData.lastUpdate).toLocaleTimeString()}
+                    <div>Last Update: {new Date(weatherData.lastUpdate).toLocaleTimeString()}</div>
+                    <div className="text-xs text-gray-400">
+                      {new Date(weatherData.lastUpdate).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric'
+                      })}
+                    </div>
                     {/*{connectionStatus === 'disconnected' && (
                       <span className="text-red-600 ml-1">
                         (Data timeout - no updates in 10+ seconds)
@@ -226,12 +317,13 @@ function App() {
         </Card>
 
         {/* Tab Content */}
-        {activeTab === "Live" && <LiveTab weatherData={weatherData} />}
+        {activeTab === "Live" && <LiveTab weatherData={weatherData} gpsTracking={gpsTracking} />}
         {activeTab === "System" && (
           <SystemTab
             currentDateTime={currentDateTime}
             weatherData={weatherData}
             connectionStatus={connectionStatus}
+            uptimeSeconds={uptimeSeconds}
           />
         )}
         {activeTab === "Analytics" && <AnalyticsTab weatherData={weatherData} />}

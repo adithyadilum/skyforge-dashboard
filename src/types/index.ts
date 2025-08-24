@@ -35,6 +35,7 @@ export interface WeatherData {
   battery: {
     voltage: number
     percentage: number
+  cellVoltage?: number
   }
   timestamp: string
   condition: string

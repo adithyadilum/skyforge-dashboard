@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { LogOut, ChevronDown, User } from 'lucide-react'
-import { authService } from '../services/authService'
+// Corrected path after project restructuring (services moved to src/services)
+import { authService } from '../../services/auth.service'
 
 interface UserProfileProps {
   user: any // Firebase User type

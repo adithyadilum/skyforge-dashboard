@@ -3,7 +3,8 @@ import { Sun, Thermometer, Droplets, Gauge, Wind, Satellite, Mountain, ChevronDo
 import { Card, CardContent } from "../ui/card"
 import UvGauge from "../ui/UvGauge"
 import { WeatherData } from "../../types/index"
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
+import { useEffect } from 'react'
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
 
@@ -15,12 +16,38 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 })
 
-interface LiveTabProps {
-  weatherData: WeatherData
+// Custom component to auto-center map when GPS coordinates change
+function MapController({ center }: { center: [number, number] }) {
+  const map = useMap()
+  
+  useEffect(() => {
+    map.setView(center, 15) // Auto-center with zoom level 15
+  }, [center, map])
+  
+  return null
 }
 
-export default function LiveTab({ weatherData }: LiveTabProps) {
+interface LiveTabProps {
+  weatherData: WeatherData
+  gpsTracking?: any // GPS tracking data from useGPSTracking hook
+}
+
+export default function LiveTab({ weatherData, gpsTracking }: LiveTabProps) {
   const [units, setUnits] = useState<'metric' | 'imperial'>('metric')
+
+  // Default location (landmark) when GPS coordinates are zero
+  const defaultLocation: [number, number] = [6.7973, 79.9021]
+  
+  // Check if current GPS readings are zero or invalid
+  const hasValidGPS = weatherData?.location?.latitude && 
+                      weatherData?.location?.longitude && 
+                      weatherData.location.latitude !== 0 && 
+                      weatherData.location.longitude !== 0
+
+  // Determine current position - use GPS if valid, otherwise use default landmark
+  const currentPosition: [number, number] = hasValidGPS 
+    ? [weatherData.location.latitude, weatherData.location.longitude]
+    : defaultLocation
 
   // Unit conversion functions
   // Get realistic altitude fallback based on GPS location
@@ -47,6 +74,14 @@ export default function LiveTab({ weatherData }: LiveTabProps) {
 
   const convertAltitude = (meters: number) => {
     return units === 'metric' ? meters : meters * 3.28084
+  }
+
+  // Format altitude with sensible precision (show 1 decimal for smaller values)
+  const formatAltitude = (rawMeters: number) => {
+    const converted = convertAltitude(rawMeters)
+    // Decide precision: finer detail for low altitude
+    const precision = converted < (units === 'metric' ? 100 : 300) ? 1 : 0
+    return converted.toFixed(precision)
   }
 
   const convertPressure = (hPa: number) => {
@@ -136,9 +171,9 @@ export default function LiveTab({ weatherData }: LiveTabProps) {
                 <Gauge className="w-5 h-5 text-blue-500" />
                 <span className="text-gray-600">Pressure</span>
               </div>
-              <div className="text-base font-semibold text-gray-900">
-                {convertAltitude(weatherData.pressure.altitude || getAltitudeFallback()).toFixed(0)}{getAltitudeUnit()}
-              </div>
+              {/*<div className="text-base font-semibold text-gray-900">
+                {formatAltitude(weatherData.pressure.altitude || getAltitudeFallback())}{getAltitudeUnit()}
+              </div>*/}
               <div className="text-xl font-semibold text-gray-900">
                 {convertPressure(weatherData.pressure.hPa).toFixed(units === 'metric' ? 0 : 2)} {getPressureUnit()}
               </div>
@@ -170,7 +205,7 @@ export default function LiveTab({ weatherData }: LiveTabProps) {
                 <span className="text-gray-600">Altitude</span>
               </div>
               <div className="text-2xl font-semibold text-gray-900">
-                {convertAltitude(weatherData.location.altitude || getAltitudeFallback()).toFixed(0)} {getAltitudeUnit()}
+                {formatAltitude(weatherData.location.altitude || getAltitudeFallback())} {getAltitudeUnit()}
               </div>
             </CardContent>
           </Card>
@@ -181,18 +216,16 @@ export default function LiveTab({ weatherData }: LiveTabProps) {
                 <Wind className="w-5 h-5 text-gray-500" />
                 <span className="text-gray-600">Air Quality</span>
               </div>
-              <div className="space-y-1">
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-gray-600">Gas:</span>
-                  <span className="text-sm font-semibold text-gray-900">{weatherData.airQuality.gas} TVOC</span>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="text-center">
+                  <div className="text-xs text-gray-600 mb-1">Gas</div>
+                  <div className="text-sm font-semibold text-gray-900">{weatherData.airQuality.gas}</div>
+                  <div className="text-xs text-gray-500">TVOC</div>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-gray-600">CO₂:</span>
-                  <span className="text-sm font-semibold text-gray-900">{weatherData.airQuality.co2} ppm</span>
-                </div>
-                <div className="text-center mt-1 pt-1 border-t border-gray-200">
-                  <span className="text-xs text-gray-500">Quality: </span>
-                  <span className="text-sm font-semibold text-gray-900">{weatherData.airQuality.quality}</span>
+                <div className="text-center">
+                  <div className="text-xs text-gray-600 mb-1">CO₂</div>
+                  <div className="text-sm font-semibold text-gray-900">{weatherData.airQuality.co2}</div>
+                  <div className="text-xs text-gray-500">ppm</div>
                 </div>
               </div>
             </CardContent>
@@ -207,22 +240,41 @@ export default function LiveTab({ weatherData }: LiveTabProps) {
           <CardContent className="p-4">
             <div className="h-48 rounded-lg overflow-hidden relative">
               <MapContainer
-                center={[weatherData.location.latitude, weatherData.location.longitude]}
-                zoom={13}
+                center={currentPosition}
+                zoom={15}
                 style={{ height: '100%', width: '100%' }}
                 className="rounded-lg"
               >
+                <MapController center={currentPosition} />
                 <TileLayer
                   attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
-                <Marker position={[weatherData.location.latitude, weatherData.location.longitude]}>
+                <Marker position={currentPosition}>
                   <Popup>
-                    Sensor Location<br />
-                    {weatherData.location.latitude.toFixed(4)}°N, {Math.abs(weatherData.location.longitude).toFixed(4)}°W
+                    {hasValidGPS ? (
+                      <>
+                        <div className="text-green-600 font-semibold">Live Drone Position</div>
+                        Sensor Location: {currentPosition[0].toFixed(4)}°N, {Math.abs(currentPosition[1]).toFixed(4)}°E
+                        <br />
+                        <span className="text-sm text-gray-500">Real-time GPS tracking</span>
+                      </>
+                    ) : (
+                      <>
+                        <div className="text-blue-600 font-semibold">Default Landmark</div>
+                        Location: {currentPosition[0].toFixed(4)}°N, {currentPosition[1].toFixed(4)}°E
+                        <br />
+                        <span className="text-sm text-gray-500">Waiting for GPS signal...</span>
+                      </>
+                    )}
                   </Popup>
                 </Marker>
               </MapContainer>
+              {/* GPS Status Indicator */}
+              <div className={`absolute top-3 right-3 text-xs px-2 py-1 rounded z-[1000] ${hasValidGPS ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
+                }`}>
+                {hasValidGPS ? 'Live GPS' : 'Default Location'}
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -238,7 +290,14 @@ export default function LiveTab({ weatherData }: LiveTabProps) {
                 </div>
                <span className="text-sm text-gray-600">Course</span>
               </div>
-             <div className="text-lg font-semibold">{weatherData.wind.direction}°</div>
+              <div className="text-right">
+                <div className="text-lg font-semibold">
+                  {gpsTracking?.navigation?.course ? `${gpsTracking.navigation.course.toFixed(1)}°` : `${weatherData.wind.direction}°`}
+                </div>
+                {gpsTracking?.navigation?.courseCardinal && (
+                  <div className="text-xs text-gray-500">{gpsTracking.navigation.courseCardinal}</div>
+                )}
+              </div>
            </div>
          </CardContent>
           </Card>
@@ -252,9 +311,17 @@ export default function LiveTab({ weatherData }: LiveTabProps) {
                </div>
                 <span className="text-sm text-gray-600">Speed</span>
                </div>
-              <div className="text-lg font-semibold">
-                {convertSpeed(weatherData.wind.speed).toFixed(1)} {getSpeedUnit()}
-              </div>
+               <div className="text-right">
+                <div className="text-lg font-semibold">
+                  {gpsTracking?.navigation?.speedKmh ? 
+                    `${gpsTracking.navigation.speedKmh.toFixed(1)} ${units === 'metric' ? 'km/h' : 'mph'}` : 
+                    `${convertSpeed(weatherData.wind.speed).toFixed(1)} ${getSpeedUnit()}`
+                  }
+                </div>
+                {gpsTracking?.navigation?.speed && (
+                  <div className="text-xs text-gray-500">{gpsTracking.navigation.speed.toFixed(1)} m/s</div>
+                )}
+               </div>
              </div>
             </CardContent>
           </Card>

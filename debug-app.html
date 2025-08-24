@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug App</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test { margin: 10px 0; padding: 10px; border: 1px solid #ccc; }
+        .success { background: #d4edda; }
+        .error { background: #f8d7da; }
+    </style>
+</head>
+<body>
+    <h1>Dashboard Debug Test</h1>
+    <div id="results"></div>
+
+    <script>
+        const results = document.getElementById('results');
+        
+        function addResult(message, success = true) {
+            const div = document.createElement('div');
+            div.className = `test ${success ? 'success' : 'error'}`;
+            div.textContent = message;
+            results.appendChild(div);
+        }
+
+        // Test 1: Basic JavaScript
+        try {
+            addResult('✅ JavaScript is working');
+        } catch (e) {
+            addResult('❌ JavaScript failed: ' + e.message, false);
+        }
+
+        // Test 2: Fetch main React bundle
+        fetch('http://localhost:5184/src/main.tsx')
+            .then(response => {
+                if (response.ok) {
+                    addResult('✅ React app files are accessible');
+                } else {
+                    addResult('❌ React app files not found', false);
+                }
+            })
+            .catch(error => {
+                addResult('❌ Failed to access React files: ' + error.message, false);
+            });
+
+        // Test 3: Check console for errors
+        window.addEventListener('error', (e) => {
+            addResult('❌ JavaScript Error: ' + e.message, false);
+        });
+
+        // Test 4: Try to load the actual page and check for errors
+        setTimeout(() => {
+            fetch('http://localhost:5184/')
+                .then(response => response.text())
+                .then(html => {
+                    if (html.includes('<div id="root">')) {
+                        addResult('✅ Main page HTML structure is correct');
+                    } else {
+                        addResult('❌ Main page HTML structure is wrong', false);
+                    }
+                })
+                .catch(error => {
+                    addResult('❌ Failed to load main page: ' + error.message, false);
+                });
+        }, 1000);
+    </script>
+</body>
+</html>

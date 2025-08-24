@@ -3,7 +3,7 @@ import { Sun, Thermometer, Droplets, Gauge, Wind, BarChart3, TrendingUp, Downloa
 import { Card, CardContent } from "../ui/card"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts'
 import { WeatherData } from '../../types'
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import { firebaseService } from '../../services/firebaseService'
 import jsPDF from 'jspdf'
@@ -61,18 +61,6 @@ const UVChart = React.memo(({ data }: { data: any[] }) => (
   </ResponsiveContainer>
 ))
 
-const SpeedChart = React.memo(({ data }: { data: any[] }) => (
-  <ResponsiveContainer width="100%" height="100%">
-    <LineChart data={data}>
-      <CartesianGrid strokeDasharray="3 3" />
-      <XAxis dataKey="time" />
-      <YAxis />
-      <Tooltip />
-      <Line type="monotone" dataKey="speed" stroke="#06b6d4" strokeWidth={2} />
-    </LineChart>
-  </ResponsiveContainer>
-))
-
 const AltitudeChart = React.memo(({ data }: { data: any[] }) => (
   <ResponsiveContainer width="100%" height="100%">
     <AreaChart data={data}>
@@ -90,12 +78,10 @@ TemperatureChart.displayName = 'TemperatureChart'
 HumidityChart.displayName = 'HumidityChart'
 PressureChart.displayName = 'PressureChart'
 UVChart.displayName = 'UVChart'
-SpeedChart.displayName = 'SpeedChart'
 AltitudeChart.displayName = 'AltitudeChart'
 HumidityChart.displayName = 'HumidityChart'
 PressureChart.displayName = 'PressureChart'
 UVChart.displayName = 'UVChart'
-SpeedChart.displayName = 'SpeedChart'
 AltitudeChart.displayName = 'AltitudeChart'
 
 const AnalyticsTab = React.memo(({ weatherData: _weatherData }: AnalyticsTabProps) => {
@@ -104,7 +90,7 @@ const AnalyticsTab = React.memo(({ weatherData: _weatherData }: AnalyticsTabProp
   const [timeRange, setTimeRange] = useState<'hour' | 'day' | 'week' | 'month'>('day') // Time range selector
   const [autoRefresh, setAutoRefresh] = useState(true) // Auto-refresh toggle
   const [_error, setError] = useState<string | null>(null) // Error state for future use
-  const [refreshInterval, setRefreshInterval] = useState(30) // Refresh interval in seconds
+  const [refreshInterval, setRefreshInterval] = useState(5) // Refresh interval in seconds (default 5s)
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
 
   // Fetch analytics data function
@@ -159,13 +145,13 @@ const AnalyticsTab = React.memo(({ weatherData: _weatherData }: AnalyticsTabProp
       // Fallback to sample data if no historical data
       return {
         temperature: [
-          { time: '00:00', value: 18.5 }
+          { time: '00:00:00', value: 18.5 }
         ],
         environmental: [
-          { time: '00:00', temperature: 18.5, humidity: 65, pressure: 1013, uv: 0, co2: 400, light: 100 }
+          { time: '00:00:00', temperature: 18.5, humidity: 65, pressure: 1013, uv: 0, co2: 400, light: 100 }
         ],
         flight: [
-          { time: '10:00', speed: 0, altitude: 0 }
+          { time: '10:00:00', speed: 0, altitude: 0 }
         ]
       }
     }
@@ -178,6 +164,7 @@ const AnalyticsTab = React.memo(({ weatherData: _weatherData }: AnalyticsTabProp
       const timeString = timestamp.toLocaleTimeString('en-US', {
         hour: '2-digit',
         minute: '2-digit',
+        second: '2-digit',
         hour12: false
       })
 
@@ -241,6 +228,31 @@ const AnalyticsTab = React.memo(({ weatherData: _weatherData }: AnalyticsTabProp
       .filter(record => record.location.latitude !== 0 && record.location.longitude !== 0)
       .map(record => [record.location.latitude, record.location.longitude] as [number, number])
   }, [historicalData])
+
+  // Generate color gradient for path segments
+  const pathSegments = useMemo(() => {
+    if (gpsTrail.length < 2) return []
+    
+    const segments: Array<{ path: [[number, number], [number, number]], color: string }> = []
+    
+    for (let i = 0; i < gpsTrail.length - 1; i++) {
+      const progress = i / (gpsTrail.length - 1)
+      // Color gradient from green (start) to red (end)
+      const red = Math.round(progress * 255)
+      const green = Math.round((1 - progress) * 255)
+      const color = `rgb(${red}, ${green}, 0)`
+      
+      segments.push({
+        path: [gpsTrail[i] as [number, number], gpsTrail[i + 1] as [number, number]],
+        color: color
+      })
+    }
+    
+    return segments
+  }, [gpsTrail])
+
+  // Default location (landmark) when GPS coordinates are zero
+  const defaultLocation: [number, number] = [6.7973, 79.9021]
 
   // Calculate insights from historical data
   const insights = useMemo(() => {
@@ -308,7 +320,7 @@ const AnalyticsTab = React.memo(({ weatherData: _weatherData }: AnalyticsTabProp
     if (link.download !== undefined) {
       const url = URL.createObjectURL(blob)
       link.setAttribute('href', url)
-      link.setAttribute('download', `skyforge_analytics_${new Date().toISOString().split('T')[0]}.csv`)
+      link.setAttribute('download', `SKYFORGE_analytics_${new Date().toISOString().split('T')[0]}.csv`)
       link.style.visibility = 'hidden'
       document.body.appendChild(link)
       link.click()
@@ -320,88 +332,221 @@ const AnalyticsTab = React.memo(({ weatherData: _weatherData }: AnalyticsTabProp
   const generatePDFReport = useCallback(() => {
     const doc = new jsPDF()
     
-    // Set title
-    doc.setFontSize(20)
-    doc.text('SkyForge Analytics Report', 20, 30)
+    // Grayscale color scheme
+    const primaryColor: [number, number, number] = [64, 64, 64] // Dark gray
+    const secondaryColor: [number, number, number] = [96, 96, 96] // Medium gray
+    const accentColor: [number, number, number] = [128, 128, 128] // Light gray
+    const lightGray: [number, number, number] = [240, 240, 240] // Very light gray
     
-    // Set subtitle
-    doc.setFontSize(12)
-    doc.text(`Generated: ${new Date().toLocaleString()}`, 20, 45)
+    // Calculate additional insights
+    const maxAltitude = Math.max(...flightData.map(d => d.altitude))
+    const totalFlightTime = flightData.length * 5 // Assuming 5-minute intervals
+    const minHumidity = Math.min(...environmentalData.map(d => d.humidity))
+    const maxHumidity = Math.max(...environmentalData.map(d => d.humidity))
     
-    let yPosition = 65
+    // Header with Skyforge branding
+    doc.setFillColor(...primaryColor)
+    doc.rect(0, 0, 210, 35, 'F')
     
-    // Environmental Data Section
-    doc.setFontSize(16)
-    doc.text('ENVIRONMENTAL DATA', 20, yPosition)
-    yPosition += 15
+    // Main title (no circle logo)
+    doc.setFontSize(24)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(255, 255, 255)
+    doc.text('SKYFORGE', 25, 20)
+    
+    doc.setFontSize(14)
+    doc.setFont('helvetica', 'normal')
+    doc.text('Drone Analytics Report', 25, 28)
+    
+    // Report metadata in header with seconds
+    doc.setFontSize(10)
+    const currentDate = new Date().toLocaleString('en-US', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    })
+    doc.text(`Generated: ${currentDate}`, 145, 15)
+    doc.text(`Records: ${historicalData.length}`, 145, 23)
+    doc.text(`Time Range: ${timeRange}`, 145, 31)
+    
+    let yPosition = 50
+    
+    // Report summary box
+    doc.setFillColor(...lightGray)
+    doc.rect(15, yPosition, 180, 25, 'F')
+    doc.setDrawColor(...secondaryColor)
+    doc.rect(15, yPosition, 180, 25, 'S')
+    
+    doc.setTextColor(...primaryColor)
+    doc.setFontSize(14)
+    doc.setFont('helvetica', 'bold')
+    doc.text('[ EXECUTIVE SUMMARY ]', 20, yPosition + 8)
     
     doc.setFontSize(10)
-    environmentalData.slice(0, 10).forEach(data => {
-      const text = `${data.time}: Temp ${data.temperature}°C, Humidity ${data.humidity}%, Pressure ${data.pressure}hPa, UV ${data.uv}`
-      doc.text(text, 20, yPosition)
-      yPosition += 8
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(...secondaryColor)
+    doc.text(`• Environmental Conditions: ${insights.avgTemperature.toFixed(1)}°C avg temp, ${insights.maxUV} max UV`, 20, yPosition + 15)
+    doc.text(`• Flight Performance: ${totalFlightTime}min flight time, ${maxAltitude}m max altitude`, 20, yPosition + 21)
+    
+    yPosition += 35
+    
+    // Environmental Data Section
+    doc.setFillColor(...accentColor)
+    doc.rect(15, yPosition, 5, 8, 'F')
+    doc.setTextColor(...primaryColor)
+    doc.setFontSize(16)
+    doc.setFont('helvetica', 'bold')
+    doc.text('[ ENVIRONMENTAL DATA ]', 25, yPosition + 6)
+    yPosition += 15
+    
+    // Environmental data table
+    doc.setFillColor(...lightGray)
+    doc.rect(15, yPosition, 180, 12, 'F')
+    doc.setTextColor(...secondaryColor)
+    doc.setFontSize(9)
+    doc.setFont('helvetica', 'bold')
+    doc.text('TIME', 20, yPosition + 8)
+    doc.text('TEMP (°C)', 55, yPosition + 8)
+    doc.text('HUMIDITY (%)', 85, yPosition + 8)
+    doc.text('PRESSURE (hPa)', 125, yPosition + 8)
+    doc.text('UV INDEX', 165, yPosition + 8)
+    yPosition += 15
+    
+    doc.setFont('helvetica', 'normal')
+    environmentalData.slice(0, 8).forEach((data, index) => {
+      if (index % 2 === 0) {
+        doc.setFillColor(248, 248, 248) // Light gray for alternating rows
+        doc.rect(15, yPosition - 2, 180, 10, 'F')
+      }
+      doc.setTextColor(...secondaryColor)
+      doc.text(data.time, 20, yPosition + 5)
+      doc.text(data.temperature.toString(), 55, yPosition + 5)
+      doc.text(data.humidity.toString(), 85, yPosition + 5)
+      doc.text(data.pressure.toString(), 125, yPosition + 5)
+      doc.text(data.uv.toString(), 165, yPosition + 5)
+      yPosition += 10
     })
     
     yPosition += 10
     
     // Flight Data Section
+    doc.setFillColor(...accentColor)
+    doc.rect(15, yPosition, 5, 8, 'F')
+    doc.setTextColor(...primaryColor)
     doc.setFontSize(16)
-    doc.text('FLIGHT DATA', 20, yPosition)
+    doc.setFont('helvetica', 'bold')
+    doc.text('[ FLIGHT DATA ]', 25, yPosition + 6)
     yPosition += 15
     
-    doc.setFontSize(10)
-    flightData.slice(0, 10).forEach(data => {
-      const text = `${data.time}: Speed ${data.speed}m/s, Altitude ${data.altitude}m`
-      doc.text(text, 20, yPosition)
-      yPosition += 8
-    })
-    
-    yPosition += 10
-    
-    // Insights Section
-    doc.setFontSize(16)
-    doc.text('INSIGHTS', 20, yPosition)
+    // Flight data table
+    doc.setFillColor(...lightGray)
+    doc.rect(15, yPosition, 180, 12, 'F')
+    doc.setTextColor(...secondaryColor)
+    doc.setFontSize(9)
+    doc.setFont('helvetica', 'bold')
+    doc.text('TIME', 20, yPosition + 8)
+    doc.text('ALTITUDE (m)', 80, yPosition + 8)
+    doc.text('GPS COORDINATES', 140, yPosition + 8)
     yPosition += 15
     
-    doc.setFontSize(10)
-    const insights = [
-      '- Average Temperature: 27.6°C',
-      '- Max UV Today: 5.3',
-      '- CO₂ Trend: Steady → Rising',
-      '- Light Peak Time: 11:50 AM'
-    ]
-    
-    insights.forEach(insight => {
-      doc.text(insight, 20, yPosition)
-      yPosition += 8
+    doc.setFont('helvetica', 'normal')
+    flightData.slice(0, 8).forEach((data, index) => {
+      if (index % 2 === 0) {
+        doc.setFillColor(248, 248, 248) // Light gray for alternating rows
+        doc.rect(15, yPosition - 2, 180, 10, 'F')
+      }
+      doc.setTextColor(...secondaryColor)
+      doc.text(data.time, 20, yPosition + 5)
+      doc.text(data.altitude.toString(), 80, yPosition + 5)
+      
+      // Add GPS coordinates if available
+      const gpsCoord = gpsTrail[index] 
+      if (gpsCoord) {
+        doc.text(`${gpsCoord[0].toFixed(4)}, ${gpsCoord[1].toFixed(4)}`, 140, yPosition + 5)
+      } else {
+        doc.text('N/A', 140, yPosition + 5)
+      }
+      yPosition += 10
     })
     
-    yPosition += 10
-    
-    // GPS Trail Section
-    if (yPosition > 250) {
+    // Check if we need a new page
+    if (yPosition > 230) {
       doc.addPage()
       yPosition = 30
+    } else {
+      yPosition += 15
     }
     
+    // Key Insights Section
+    doc.setFillColor(...accentColor)
+    doc.rect(15, yPosition, 5, 8, 'F')
+    doc.setTextColor(...primaryColor)
     doc.setFontSize(16)
-    doc.text('GPS TRAIL', 20, yPosition)
+    doc.setFont('helvetica', 'bold')
+    doc.text('[ KEY INSIGHTS ]', 25, yPosition + 6)
     yPosition += 15
     
-    doc.setFontSize(10)
-    gpsTrail.slice(0, 15).forEach((coord, index) => {
-      if (yPosition > 280) {
-        doc.addPage()
-        yPosition = 30
-      }
-      const text = `Point ${index + 1}: ${coord[0]}, ${coord[1]}`
-      doc.text(text, 20, yPosition)
-      yPosition += 8
+    // Insights in a styled box
+    doc.setFillColor(245, 245, 245) // Light gray background
+    doc.rect(15, yPosition, 180, 45, 'F')
+    doc.setDrawColor(...primaryColor)
+    doc.rect(15, yPosition, 180, 45, 'S')
+    
+    doc.setTextColor(...secondaryColor)
+    doc.setFontSize(11)
+    doc.setFont('helvetica', 'normal')
+    
+    const insightsList = [
+      `• Temperature: ${insights.avgTemperature.toFixed(1)}°C (Average)`,
+      `• UV Index: ${insights.maxUV} (Maximum)`,
+      `• Humidity: ${minHumidity}% - ${maxHumidity}% (Range)`,
+      `• Altitude: ${maxAltitude}m (Maximum)`,
+      `• Flight Time: ${totalFlightTime} minutes (Total)`,
+      `• GPS Points: ${gpsTrail.length} (Recorded)`
+    ]
+    
+    insightsList.forEach((insight, index) => {
+      doc.text(insight, 25, yPosition + 10 + (index * 7))
     })
     
-    // Save the PDF
-    doc.save(`skyforge_report_${new Date().toISOString().split('T')[0]}.pdf`)
-  }, [environmentalData, flightData, gpsTrail])
+    yPosition += 55
+    
+    // GPS Trail Section (if space allows)
+    if (yPosition < 220 && gpsTrail.length > 0) {
+      doc.setFillColor(...accentColor)
+      doc.rect(15, yPosition, 5, 8, 'F')
+      doc.setTextColor(...primaryColor)
+      doc.setFontSize(16)
+      doc.setFont('helvetica', 'bold')
+      doc.text('[ GPS TRAIL SUMMARY ]', 25, yPosition + 6)
+      yPosition += 15
+      
+      doc.setTextColor(...secondaryColor)
+      doc.setFontSize(10)
+      doc.setFont('helvetica', 'normal')
+      doc.text(`Start: ${gpsTrail[0]?.[0]?.toFixed(6)}, ${gpsTrail[0]?.[1]?.toFixed(6)}`, 20, yPosition + 5)
+      doc.text(`End: ${gpsTrail[gpsTrail.length-1]?.[0]?.toFixed(6)}, ${gpsTrail[gpsTrail.length-1]?.[1]?.toFixed(6)}`, 20, yPosition + 12)
+      doc.text(`Total Points: ${gpsTrail.length}`, 20, yPosition + 19)
+    }
+    
+    // Footer
+    const pageHeight = doc.internal.pageSize.height
+    doc.setFillColor(...primaryColor)
+    doc.rect(0, pageHeight - 15, 210, 15, 'F')
+    
+    doc.setTextColor(255, 255, 255)
+    doc.setFontSize(8)
+    doc.text('© 2025 Skyforge Drone Analytics • Confidential Report', 20, pageHeight - 8)
+    doc.text(`Page 1 of 1 • Report ID: SF-${Date.now()}`, 145, pageHeight - 8)
+    
+    // Save the PDF with enhanced filename
+    const timestamp = new Date().toISOString().split('T')[0]
+    doc.save(`Skyforge_Analytics_Report_${timestamp}.pdf`)
+  }, [environmentalData, flightData, gpsTrail, insights, historicalData.length, timeRange])
 
   return (
     <div className="space-y-6">
@@ -450,11 +595,18 @@ const AnalyticsTab = React.memo(({ weatherData: _weatherData }: AnalyticsTabProp
                     value={refreshInterval}
                     onChange={(e) => setRefreshInterval(Number(e.target.value))}
                     className="appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 pr-8 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
+                    title="Auto refresh interval"
                   >
+                    <option value={5}>5s</option>
+                    <option value={10}>10s</option>
+                    <option value={15}>15s</option>
+                    <option value={20}>20s</option>
                     <option value={30}>30s</option>
                     <option value={60}>1m</option>
+                    <option value={120}>2m</option>
                     <option value={300}>5m</option>
                     <option value={600}>10m</option>
+                    <option value={900}>15m</option>
                     <option value={1800}>30m</option>
                   </select>
                   <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-3 h-3 text-gray-500 pointer-events-none" />
@@ -602,11 +754,11 @@ const AnalyticsTab = React.memo(({ weatherData: _weatherData }: AnalyticsTabProp
             <div className="bg-gray-50 rounded-lg p-4">
               <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
                 <Mountain className="w-4 h-4 text-green-500" />
-                GPS Trail
+                GPS Trail with Flight Path
               </h4>
               <div className="h-64 rounded-lg overflow-hidden relative">
                 <MapContainer
-                  center={[gpsTrail.length > 0 ? gpsTrail[0][0] : 7.2901, gpsTrail.length > 0 ? gpsTrail[0][1] : -80.6337]}
+                  center={gpsTrail.length > 0 ? gpsTrail[0] as [number, number] : defaultLocation}
                   zoom={13}
                   style={{ height: '16rem', width: '100%' }}
                   className="rounded-lg"
@@ -615,12 +767,48 @@ const AnalyticsTab = React.memo(({ weatherData: _weatherData }: AnalyticsTabProp
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                   />
+                  
+                  {/* Colored path segments */}
+                  {pathSegments.map((segment, index) => (
+                    <Polyline
+                      key={index}
+                      positions={segment.path}
+                      color={segment.color}
+                      weight={4}
+                      opacity={0.8}
+                    />
+                  ))}
+                  
+                  {/* Start marker (green) */}
                   {gpsTrail.length > 0 && (
-                    <Marker position={[gpsTrail[gpsTrail.length - 1][0], gpsTrail[gpsTrail.length - 1][1]]}>
+                    <Marker position={gpsTrail[0] as [number, number]}>
                       <Popup>
-                        Current Location: {gpsTrail[gpsTrail.length - 1][0].toFixed(4)}°N, {gpsTrail[gpsTrail.length - 1][1].toFixed(4)}°E
+                        <div className="text-green-600 font-semibold">Flight Start</div>
+                        Location: {gpsTrail[0][0].toFixed(4)}°N, {gpsTrail[0][1].toFixed(4)}°E
+                      </Popup>
+                    </Marker>
+                  )}
+                  
+                  {/* End marker (red) */}
+                  {gpsTrail.length > 1 && (
+                    <Marker position={gpsTrail[gpsTrail.length - 1] as [number, number]}>
+                      <Popup>
+                        <div className="text-red-600 font-semibold">Flight End</div>
+                        Location: {gpsTrail[gpsTrail.length - 1][0].toFixed(4)}°N, {gpsTrail[gpsTrail.length - 1][1].toFixed(4)}°E
                         <br />
-                        GPS Trail: {gpsTrail.length} position points
+                        Total Points: {gpsTrail.length}
+                      </Popup>
+                    </Marker>
+                  )}
+                  
+                  {/* Default landmark when no GPS data */}
+                  {gpsTrail.length === 0 && (
+                    <Marker position={defaultLocation}>
+                      <Popup>
+                        <div className="text-blue-600 font-semibold">Default Landmark</div>
+                        Location: {defaultLocation[0].toFixed(4)}°N, {defaultLocation[1].toFixed(4)}°E
+                        <br />
+                        <span className="text-gray-500">Waiting for GPS data...</span>
                       </Popup>
                     </Marker>
                   )}
@@ -628,24 +816,13 @@ const AnalyticsTab = React.memo(({ weatherData: _weatherData }: AnalyticsTabProp
               </div>
             </div>
 
-            {/* Speed over Time */}
-            <div className="bg-gray-50 rounded-lg p-4">
-              <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                <Wind className="w-4 h-4 text-cyan-500" />
-                Speed over Time (m/s)
-              </h4>
-              <div className="h-48 flex items-center justify-center bg-white rounded border-2 border-dashed border-gray-300">
-                <SpeedChart data={flightData} />
-              </div>
-            </div>
-
             {/* Altitude vs Time */}
-            <div className="bg-gray-50 rounded-lg p-4 lg:col-span-2">
+            <div className="bg-gray-50 rounded-lg p-4">
               <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
                 <Mountain className="w-4 h-4 text-green-500" />
                 Altitude vs Time (m)
               </h4>
-              <div className="h-48 flex items-center justify-center bg-white rounded border-2 border-dashed border-gray-300">
+              <div className="h-64 flex items-center justify-center bg-white rounded border-2 border-dashed border-gray-300">
                 <AltitudeChart data={flightData} />
               </div>
             </div>

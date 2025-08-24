@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #f0f0f0; }
+        .test-box { background: white; padding: 20px; border-radius: 8px; margin: 10px 0; }
+        .success { border-left: 4px solid #4CAF50; }
+        .error { border-left: 4px solid #f44336; }
+        .info { border-left: 4px solid #2196F3; }
+    </style>
+</head>
+<body>
+    <h1>SkyForge Dashboard - Connection Test</h1>
+    
+    <div class="test-box info">
+        <h3>Basic Page Load Test</h3>
+        <p>✅ If you can see this page, the basic web server is working.</p>
+        <p>Current time: <span id="time"></span></p>
+    </div>
+
+    <div class="test-box" id="firebase-test">
+        <h3>Firebase Connection Test</h3>
+        <p id="firebase-status">Testing Firebase connection...</p>
+        <div id="firebase-details"></div>
+    </div>
+
+    <div class="test-box">
+        <h3>Quick Actions</h3>
+        <button onclick="window.location.href='http://localhost:5174'">Go to Main Dashboard</button>
+        <button onclick="testFirebase()">Test Firebase Again</button>
+        <button onclick="showLogs()">Show Console Logs</button>
+    </div>
+
+    <div class="test-box">
+        <h3>Console Output</h3>
+        <div id="console-output" style="background: #000; color: #0f0; padding: 10px; font-family: monospace; height: 200px; overflow-y: auto;"></div>
+    </div>
+
+    <script type="module">
+        // Update time
+        function updateTime() {
+            document.getElementById('time').textContent = new Date().toLocaleString();
+        }
+        updateTime();
+        setInterval(updateTime, 1000);
+
+        // Capture console logs
+        const consoleOutput = document.getElementById('console-output');
+        const originalLog = console.log;
+        const originalError = console.error;
+        
+        function addToConsole(type, ...args) {
+            const message = args.map(arg => 
+                typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+            ).join(' ');
+            consoleOutput.innerHTML += `<div>[${type}] ${message}</div>`;
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        }
+
+        console.log = (...args) => {
+            addToConsole('LOG', ...args);
+            originalLog(...args);
+        };
+
+        console.error = (...args) => {
+            addToConsole('ERROR', ...args);
+            originalError(...args);
+        };
+
+        // Test Firebase
+        async function testFirebase() {
+            const statusEl = document.getElementById('firebase-status');
+            const detailsEl = document.getElementById('firebase-details');
+            const testBox = document.getElementById('firebase-test');
+            
+            try {
+                statusEl.textContent = 'Importing Firebase modules...';
+                console.log('Starting Firebase test...');
+                
+                const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js');
+                const { getDatabase, ref, onValue, query, orderByKey, limitToLast } = await import('https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js');
+                
+                console.log('Firebase modules imported successfully');
+                statusEl.textContent = 'Initializing Firebase...';
+
+                const firebaseConfig = {
+                    apiKey: "AIzaSyA5IRjwAdvgSQ8K9sTkfdjEgFO_P1K-PdM",
+                    authDomain: "skyforge-4606b.firebaseapp.com",
+                    databaseURL: "https://skyforge-4606b-default-rtdb.asia-southeast1.firebasedatabase.app",
+                    projectId: "skyforge-4606b",
+                    storageBucket: "skyforge-4606b.firebasestorage.app",
+                    messagingSenderId: "113983013806",
+                    appId: "1:113983013806:web:b37570450de08e7a147e3f",
+                };
+
+                const app = initializeApp(firebaseConfig, 'test-' + Date.now());
+                const db = getDatabase(app);
+                
+                console.log('Firebase initialized');
+                statusEl.textContent = 'Testing database connection...';
+
+                // Test connection
+                const connectedRef = ref(db, '.info/connected');
+                onValue(connectedRef, (snapshot) => {
+                    const connected = snapshot.val();
+                    console.log('Firebase connected:', connected);
+                    
+                    if (connected) {
+                        statusEl.textContent = '✅ Firebase connected successfully!';
+                        testBox.className = 'test-box success';
+                        
+                        // Test telemetry data
+                        const telemetryRef = ref(db, 'telemetry');
+                        const latestQuery = query(telemetryRef, orderByKey(), limitToLast(3));
+                        
+                        onValue(latestQuery, (snapshot) => {
+                            const data = snapshot.val();
+                            console.log('Telemetry data:', data);
+                            
+                            if (data) {
+                                const keys = Object.keys(data);
+                                detailsEl.innerHTML = `
+                                    <p><strong>Telemetry Records Found:</strong> ${keys.length}</p>
+                                    <p><strong>Latest Keys:</strong> ${keys.join(', ')}</p>
+                                    <p><strong>Sample Record:</strong></p>
+                                    <pre style="font-size: 12px; overflow: auto; max-height: 150px;">${JSON.stringify(data[keys[0]], null, 2)}</pre>
+                                `;
+                            } else {
+                                detailsEl.innerHTML = '<p><strong>⚠️ No telemetry data found in database</strong></p>';
+                            }
+                        }, { onlyOnce: true });
+                        
+                    } else {
+                        statusEl.textContent = '❌ Firebase connection failed';
+                        testBox.className = 'test-box error';
+                    }
+                });
+
+            } catch (error) {
+                console.error('Firebase test error:', error);
+                statusEl.textContent = '❌ Firebase test failed: ' + error.message;
+                testBox.className = 'test-box error';
+                detailsEl.innerHTML = `<pre style="color: red;">${error.stack}</pre>`;
+            }
+        }
+
+        // Run Firebase test on load
+        testFirebase();
+
+        // Make functions global for button clicks
+        window.testFirebase = testFirebase;
+        window.showLogs = () => {
+            consoleOutput.style.height = consoleOutput.style.height === '400px' ? '200px' : '400px';
+        };
+    </script>
+</body>
+</html>

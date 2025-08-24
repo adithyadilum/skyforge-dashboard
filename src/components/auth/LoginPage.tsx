@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { Card, CardContent } from './ui/card'
-import { authService } from '../services/authService'
+import { Card, CardContent } from '../ui/card'
+// Corrected path after project restructuring (services moved to src/services)
+import { authService } from '../../services/auth.service'
 
 interface LoginPageProps {
   onLoginSuccess: () => void
@@ -34,7 +35,7 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
       <Card className="w-full max-w-md shadow-xl">
         <CardContent className="p-8">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2"> SkyForge</h1>
+            <h1 className="text-3xl font-bold text-black mb-2"> SKYFORGE</h1>
             <p className="text-gray-600">Weather Monitoring Dashboard</p>
             {/*<p className="text-sm text-gray-500 mt-2">ESP32 IoT Device Integration</p>*/}
           </div>
@@ -66,7 +67,7 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
 
             <div className="text-center">
               <p className="text-xs text-gray-500">
-                By signing in, you agree to access real-time weather data and analytics from Skyforge weather monitoring drone.
+                By signing in, you agree to access real-time weather data and analytics from SKYFORGE weather monitoring drone.
               </p>
             </div>
           </div>

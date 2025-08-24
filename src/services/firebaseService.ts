@@ -86,6 +86,8 @@ export class FirebaseService {
 
   // Subscribe to real-time weather data from sensor_data node
   subscribeToWeatherData(callback: (data: WeatherData | null) => void): () => void {
+    console.log('🚀 subscribeToWeatherData called')
+    
     // Debug: Check if callback is set
     if (!this.connectionStatusCallback) {
       console.warn('⚠️ WARNING: Connection status callback not set! Call setConnectionStatusCallback() first.')
@@ -94,8 +96,9 @@ export class FirebaseService {
     }
 
     // Check if Firebase is configured
+    console.log('🔥 Firebase config check:', { hasFirebaseConfig, db: !!db })
     if (!hasFirebaseConfig || !db) {
-      console.log('Firebase not configured, returning null data immediately')
+      console.log('❌ Firebase not configured, returning null data immediately')
       this.currentStatus = 'disconnected'
       if (this.connectionStatusCallback) {
         this.connectionStatusCallback('disconnected')
@@ -123,11 +126,17 @@ export class FirebaseService {
       const data = snapshot.val()
 
       console.log('📊 Real-time Firebase data received:', data)
+      console.log('📊 Raw snapshot exists:', !!snapshot.exists())
+      console.log('📊 Snapshot key:', snapshot.key)
 
       if (data) {
+        console.log('✅ Data exists, processing...')
         // Get the latest record (there should only be one due to limitToLast(1))
         const latestKey = Object.keys(data)[0]
         const latestRecord = data[latestKey]
+        
+        console.log('📊 Latest key:', latestKey)
+        console.log('📊 Latest record:', latestRecord)
 
         if (latestRecord && latestRecord.timestamp) {
           // Robust timestamp handling: support both seconds and milliseconds
@@ -207,10 +216,7 @@ export class FirebaseService {
               direction: 0, // Not available in your data structure
             },
             satellites: latestRecord.gps_satellites || latestRecord.satellites || latestRecord.sat_count || 0,
-            battery: {
-              voltage: latestRecord.battery_voltage || latestRecord.batteryVoltage || 0,
-              percentage: this.calculateBatteryPercentage(latestRecord.battery_voltage || latestRecord.batteryVoltage || 0),
-            },
+            battery: this.processBattery(latestRecord),
             timestamp: new Date(recordTimestamp).toLocaleTimeString(),
             condition: this.getWeatherCondition(latestRecord.lux || 0),
             isLive: isLive,
@@ -233,6 +239,12 @@ export class FirebaseService {
         } else {
           // No valid record or missing timestamp
           console.log('❌ No valid sensor record found or missing timestamp')
+          console.log('🔍 Record check:', {
+            latestRecord: !!latestRecord,
+            hasTimestamp: !!latestRecord?.timestamp,
+            timestampValue: latestRecord?.timestamp,
+            recordKeys: latestRecord ? Object.keys(latestRecord) : 'N/A'
+          })
           this.currentStatus = 'disconnected'
           if (this.connectionStatusCallback) {
             this.connectionStatusCallback('disconnected')
@@ -351,13 +363,48 @@ export class FirebaseService {
   }
 
   // Helper function to calculate battery percentage from voltage
-  private calculateBatteryPercentage(voltage: number): number {
-    if (voltage <= 0) return 0
-    // Assuming 3.7V Li-ion battery: 3.2V (0%) to 4.2V (100%)
-    const minVoltage = 3.2
-    const maxVoltage = 4.2
-    const percentage = Math.min(100, Math.max(0, ((voltage - minVoltage) / (maxVoltage - minVoltage)) * 100))
-    return Math.round(percentage)
+  private calculateBatteryPercentage(rawVoltage: number): number {
+    if (rawVoltage <= 0) return 0
+    
+    // Convert mV to V if needed
+    let voltage = rawVoltage > 100 ? rawVoltage / 1000 : rawVoltage
+    
+    // Apply 700mV offset correction (database reads 700mV lower than actual)
+    voltage = voltage + 0.7
+    
+    // 3S LiPo battery voltage range: 9.5V (0%) to 12.6V (100%)
+    const minPackVoltage = 9.5
+    const maxPackVoltage = 12.6
+    
+    // Clamp voltage to valid range
+    const clamped = Math.min(maxPackVoltage, Math.max(minPackVoltage, voltage))
+    
+    // Calculate percentage
+    const percentage = ((clamped - minPackVoltage) / (maxPackVoltage - minPackVoltage)) * 100
+    
+    return Math.round(Math.max(0, Math.min(100, percentage)))
+  }
+
+  // Normalize raw battery fields into pack/cell voltage and percentage.
+  private processBattery(record: any) {
+    let raw = record?.battery_voltage || record?.batteryVoltage || record?.battery || 0
+    if (!raw || isNaN(raw)) return { voltage: 0, cellVoltage: 0, percentage: 0 }
+    
+    // Convert mV to V if needed
+    let voltage = raw > 100 ? raw / 1000 : raw
+    
+    // Apply 700mV offset correction (database reads 700mV lower than actual)
+    const correctedVoltage = voltage + 0.7
+    
+    // For 3S LiPo pack
+    const packVoltage = Math.max(0, correctedVoltage) // Ensure no negative voltage
+    const cellVoltage = packVoltage / 3
+    
+    return {
+      voltage: packVoltage,
+      cellVoltage: cellVoltage,
+      percentage: this.calculateBatteryPercentage(raw) // Use raw value for calculation
+    }
   }
 
   // Test real-time connection
@@ -480,10 +527,7 @@ export class FirebaseService {
                     direction: 0,
                   },
                   satellites: record.gps_satellites || record.satellites || record.sat_count || 0,
-                  battery: {
-                    voltage: record.battery_voltage || record.batteryVoltage || 0,
-                    percentage: this.calculateBatteryPercentage(record.battery_voltage || record.batteryVoltage || 0),
-                  },
+                  battery: this.processBattery(record),
                   timestamp: new Date(recordTimestamp).toLocaleTimeString(),
                   condition: this.getWeatherCondition(record.lux || 0),
                   isLive: isLive,
@@ -641,10 +685,7 @@ export class FirebaseService {
                       direction: 0,
                     },
                     satellites: record.gps_satellites || record.satellites || record.sat_count || 0,
-                    battery: {
-                      voltage: record.battery_voltage || record.batteryVoltage || 0,
-                      percentage: this.calculateBatteryPercentage(record.battery_voltage || record.batteryVoltage || 0),
-                    },
+                    battery: this.processBattery(record),
                     timestamp: new Date(recordTimestamp).toLocaleTimeString(),
                     condition: this.getWeatherCondition(record.lux || 0),
                     isLive: isLive,
