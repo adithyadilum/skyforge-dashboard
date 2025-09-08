@@ -550,27 +550,34 @@ const AnalyticsTab = React.memo(({ weatherData: _weatherData }: AnalyticsTabProp
 
   return (
     <div className="space-y-6">
-      {/* Analytics Header */}
+      {/* Analytics Header - Responsive Design */}
       <Card className="shadow-lg shadow-gray-200/50">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-              <BarChart3 className="w-6 h-6 text-blue-500" />
-              Analytics
-              {isLoading && (
-                <RefreshCw className="w-4 h-4 text-blue-500 animate-spin ml-2" />
-              )}
-            </h2>
-            {/* Time Range Selector and Controls */}
-            <div className="flex items-center gap-4">
+        <CardContent className="p-4 sm:p-6">
+          {/* Mobile-First Header Layout */}
+          <div className="space-y-4 lg:space-y-0">
+            {/* Title Row - Always Full Width */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2">
+                <BarChart3 className="w-5 h-5 sm:w-6 sm:h-6 text-blue-500" />
+                Analytics
+                {isLoading && (
+                  <RefreshCw className="w-4 h-4 text-blue-500 animate-spin ml-2" />
+                )}
+              </h2>
+              {/* Records Count - Right Side on Desktop, Below Title on Mobile */}
               <div className="flex items-center gap-2 text-sm text-gray-600">
                 <span>Records: {historicalData.length}</span>
               </div>
-              <div className="relative">
+            </div>
+            
+            {/* Controls Row - Responsive Grid Layout */}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+              {/* Time Range Selector - Full Width on Mobile */}
+              <div className="relative flex-shrink-0">
                 <select
                   value={timeRange}
                   onChange={(e) => handleTimeRangeChange(e.target.value as 'hour' | 'day' | 'week' | 'month')}
-                  className="appearance-none bg-white border border-gray-300 rounded-md px-4 py-2 pr-8 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
+                  className="appearance-none bg-white border border-gray-300 rounded-md px-3 sm:px-4 py-2 pr-8 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm w-full sm:w-auto min-w-[120px]"
                 >
                   <option value="hour">Last Hour</option>
                   <option value="day">Last Day</option>
@@ -579,47 +586,53 @@ const AnalyticsTab = React.memo(({ weatherData: _weatherData }: AnalyticsTabProp
                 </select>
                 <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
               </div>
-              <button
-                onClick={() => setAutoRefresh(!autoRefresh)}
-                className={`flex items-center gap-2 px-3 py-2 rounded-md transition-colors text-sm ${autoRefresh
-                    ? 'bg-green-500 text-white hover:bg-green-600'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                  }`}
-              >
-                <RefreshCw className={`w-4 h-4 ${autoRefresh ? 'animate-pulse' : ''}`} />
-                Auto: {autoRefresh ? 'ON' : 'OFF'}
-              </button>
-              {autoRefresh && (
-                <div className="relative">
-                  <select
-                    value={refreshInterval}
-                    onChange={(e) => setRefreshInterval(Number(e.target.value))}
-                    className="appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 pr-8 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
-                    title="Auto refresh interval"
-                  >
-                    <option value={5}>5s</option>
-                    <option value={10}>10s</option>
-                    <option value={15}>15s</option>
-                    <option value={20}>20s</option>
-                    <option value={30}>30s</option>
-                    <option value={60}>1m</option>
-                    <option value={120}>2m</option>
-                    <option value={300}>5m</option>
-                    <option value={600}>10m</option>
-                    <option value={900}>15m</option>
-                    <option value={1800}>30m</option>
-                  </select>
-                  <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-3 h-3 text-gray-500 pointer-events-none" />
-                </div>
-              )}
-              <button
-                onClick={refreshData}
-                disabled={isLoading}
-                className="flex items-center gap-2 px-3 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-                Refresh
-              </button>
+              
+              {/* Auto Refresh Controls - Responsive Flex */}
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+                <button
+                  onClick={() => setAutoRefresh(!autoRefresh)}
+                  className={`flex items-center justify-center gap-2 px-3 py-2 rounded-md transition-colors text-sm min-h-[36px] ${autoRefresh
+                      ? 'bg-green-500 text-white hover:bg-green-600'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                >
+                  <RefreshCw className={`w-4 h-4 ${autoRefresh ? 'animate-pulse' : ''}`} />
+                  <span className="whitespace-nowrap">Auto: {autoRefresh ? 'ON' : 'OFF'}</span>
+                </button>
+                
+                {autoRefresh && (
+                  <div className="relative flex-shrink-0">
+                    <select
+                      value={refreshInterval}
+                      onChange={(e) => setRefreshInterval(Number(e.target.value))}
+                      className="appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 pr-8 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm w-full sm:w-auto min-w-[80px]"
+                      title="Auto refresh interval"
+                    >
+                      <option value={5}>5s</option>
+                      <option value={10}>10s</option>
+                      <option value={15}>15s</option>
+                      <option value={20}>20s</option>
+                      <option value={30}>30s</option>
+                      <option value={60}>1m</option>
+                      <option value={120}>2m</option>
+                      <option value={300}>5m</option>
+                      <option value={600}>10m</option>
+                      <option value={900}>15m</option>
+                      <option value={1800}>30m</option>
+                    </select>
+                    <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-3 h-3 text-gray-500 pointer-events-none" />
+                  </div>
+                )}
+                
+                <button
+                  onClick={refreshData}
+                  disabled={isLoading}
+                  className="flex items-center justify-center gap-2 px-3 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed min-h-[36px]"
+                >
+                  <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+                  <span className="whitespace-nowrap">Refresh</span>
+                </button>
+              </div>
             </div>
           </div>
           {/*{historicalData.length > 0 && (
@@ -638,8 +651,22 @@ const AnalyticsTab = React.memo(({ weatherData: _weatherData }: AnalyticsTabProp
               <div className="text-sm text-red-500">{error}</div>
             </div>
           )}*/}
-          <div className="mt-2 text-xs text-gray-500">
-            Analytics: {historicalData.length} records loaded • Latest temp: {historicalData[historicalData.length - 1]?.temperature?.celsius || 'N/A'}°C • Auto-refresh: {autoRefresh ? `ON (${refreshInterval}s)` : 'OFF'}
+          {/* Status Information - Responsive Layout */}
+          <div className="mt-4 pt-3 border-t border-gray-100">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-xs text-gray-500">
+              <span className="flex items-center gap-1">
+                <span className="font-medium">Analytics:</span>
+                <span>{historicalData.length} records loaded</span>
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="font-medium">Latest temp:</span>
+                <span>{historicalData[historicalData.length - 1]?.temperature?.celsius || 'N/A'}°C</span>
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="font-medium">Auto-refresh:</span>
+                <span>{autoRefresh ? `ON (${refreshInterval}s)` : 'OFF'}</span>
+              </span>
+            </div>
           </div>
         </CardContent>
       </Card>
